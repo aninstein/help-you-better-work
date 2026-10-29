@@ -1,0 +1,76 @@
+# 规格附带的拟定配置；尚未接入运行时，不是已加载词库。
+# semantic_signals 为结构化分类结果，不是凭关键词执行动作的代码。
+version: call-policy-v1-draft
+status: proposed
+scope: realtime_call
+precedence: [deny, hold, notify, auto]
+on_classifier_error: hold
+on_classifier_timeout: hold
+review_timeout_seconds: 20
+late_approval: require_reactivation_and_revalidation
+
+domain_registry:
+  known: [general_knowledge, everyday_conversation, product_faq, metric_definitions]
+  open_review: [existential_philosophy, unconfigured_open_domain]
+  distinction: 新领域不等于每个第一次出现的问题；低置信度进入澄清或 hold。
+
+rules:
+  - id: SAFETY-HARM-001
+    semantic_signals: [actionable_criminal_assistance, actionable_violent_harm]
+    action: deny
+    human_overridable: false
+    alert: high
+    examples:
+      positive: [请求帮助实施犯罪, 请求伤害他人的具体操作]
+      negative: ["如何预防诈骗", "How do I kill a process?"]
+
+  - id: SAFETY-AMBIGUOUS-001
+    semantic_signals: [uncertain_harmful_intent, uncertain_graphic_violence_context]
+    action: hold
+    alert: high
+    resolution: 澄清语境后重新分类；人工不能绕过硬安全限制。
+
+  - id: DATA-LOOKUP-001
+    semantic_signals: [actual_business_metric_lookup, person_or_account_lookup, record_id_lookup]
+    action: hold
+    alert: high
+    tool_grant_required: true
+    grant_fields: [tool, resource, args_hash, scope, question_version, expiry]
+    examples:
+      positive: ["查询昨天真实DAU", "Look up the account for ID 1234."]
+      negative: ["解释DAU的定义", "Show an illustrative DAU calculation using invented numbers."]
+
+  - id: DOMAIN-OPEN-001
+    semantic_signals: [existential_philosophy, unconfigured_open_domain]
+    action: hold
+    alert: high
+    examples:
+      positive: ["What is the meaning of life?"]
+      negative: ["What is photosynthesis?"]
+
+  - id: LANGUAGE-NOTIFY-001
+    semantic_signals: [mild_profanity_in_safe_context]
+    action: notify
+    alert: badge
+
+  - id: ROUTINE-AUTO-001
+    semantic_signals: [known_domain_safe_intent]
+    action: auto
+    alert: timeline_only
+    conditions: 分类成功且无更严格规则、有效禁止约束或缺失授权。
+
+lexicon_sources:
+  - id: ldnoobw
+    url: https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words
+    languages: [en, zh]
+    license: CC-BY-4.0
+    use: lexical_evidence_only
+    imported: false
+    import_requires: [pinned_commit, sha256, attribution, retained_and_excluded_entries, offline_review]
+
+guardrails:
+  - 词命中不是违法结论；语境与请求意图共同决策。
+  - 运行时不得直接从远端拉取并热加载未审阅词表。
+  - deny 不得由人工批准覆盖；hold 批准不等于授予工具访问权限。
+  - 文档预读、网页搜索、MCP、缓存回放适用同一访问门禁。
+  - 人不在线、等待超时、模型错误均不自动批准。

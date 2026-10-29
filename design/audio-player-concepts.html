@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Duet AI · 紧凑语音播放器方案</title>
+<style>
+:root{color-scheme:dark;--bg:#090b12;--panel:#11141f;--line:rgba(255,255,255,.085);--text:#f2f3f8;--muted:rgba(245,246,255,.44);--teal:#38d9c5;--purple:#a493ff;--sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+*{box-sizing:border-box}body{margin:0;min-width:320px;background:radial-gradient(ellipse at 16% -10%,rgba(56,217,197,.09),transparent 34%),radial-gradient(ellipse at 90% 0%,rgba(155,140,255,.11),transparent 36%),var(--bg);color:var(--text);font:14px var(--sans)}.shell{width:min(980px,calc(100% - 32px));margin:0 auto;padding:46px 0 64px}.eyebrow{color:var(--teal);font:10px ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase}h1{margin:10px 0 7px;font-weight:570;font-size:30px;letter-spacing:-.035em}.intro{max-width:670px;color:var(--muted);font-size:13px;line-height:1.75;margin:0}.chat{margin-top:34px;display:grid;gap:16px}.message{display:flex;align-items:flex-start;gap:10px;width:100%;max-width:900px}.avatar{width:30px;height:30px;flex:0 0 30px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);display:grid;place-items:center;color:var(--purple)}.avatar.talker{color:var(--teal)}.avatar svg{width:15px;height:15px}.bubble{width:100%;min-width:0;border:1px solid rgba(164,147,255,.2);border-radius:4px 13px 13px 13px;background:linear-gradient(115deg,rgba(164,147,255,.045),rgba(255,255,255,.012));padding:12px 14px 11px}.bubble.talker{border-color:rgba(56,217,197,.18);background:linear-gradient(115deg,rgba(56,217,197,.035),rgba(255,255,255,.012))}.meta{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:10px}.who{color:var(--purple);font-size:11px;font-weight:560}.talker .who{color:var(--teal)}.time{font:10px ui-monospace,monospace;color:rgba(255,255,255,.28)}.body{margin-top:6px;font-size:15px;line-height:1.58;letter-spacing:-.012em;overflow-wrap:anywhere}.reference{display:flex;align-items:center;gap:5px;margin-top:7px;color:rgba(255,255,255,.28);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player{margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.065);color:var(--muted)}.player:first-of-type{margin-top:10px}.row{display:flex;align-items:center;gap:9px;min-width:0}.play,.replay{display:grid;place-items:center;flex:0 0 auto;border:0;background:transparent;cursor:pointer;color:var(--purple)}.talker .play,.talker .replay{color:var(--teal)}.play{width:28px;height:28px;border-radius:50%;background:rgba(164,147,255,.11);border:1px solid rgba(164,147,255,.16)}.talker .play{background:rgba(56,217,197,.10);border-color:rgba(56,217,197,.16)}.play svg{width:13px;height:13px}.replay{width:22px;height:22px;opacity:.57}.replay:hover{opacity:1}.replay svg{width:14px;height:14px}.track{min-width:0;flex:1}.track-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:9px;line-height:1.2}.track-meta time{font:9px ui-monospace,monospace;color:rgba(255,255,255,.34);white-space:nowrap}.range{--fill:8%;appearance:none;display:block;width:100%;height:2px;margin:0;border-radius:999px;background:linear-gradient(90deg,var(--purple) 0,var(--purple) var(--fill),rgba(255,255,255,.17) var(--fill),rgba(255,255,255,.17) 100%);cursor:pointer}.talker .range{background:linear-gradient(90deg,var(--teal) 0,var(--teal) var(--fill),rgba(255,255,255,.17) var(--fill),rgba(255,255,255,.17) 100%)}.range::-webkit-slider-thumb{appearance:none;width:7px;height:7px;border-radius:50%;background:var(--purple);box-shadow:0 0 0 2px rgba(164,147,255,.12)}.talker .range::-webkit-slider-thumb{background:var(--teal);box-shadow:0 0 0 2px rgba(56,217,197,.12)}.range::-moz-range-thumb{width:7px;height:7px;border:0;border-radius:50%;background:var(--purple)}.talker .range::-moz-range-thumb{background:var(--teal)}.concept{border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.014);padding:16px 18px 15px}.concept-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}.num{font:10px ui-monospace,monospace;color:rgba(255,255,255,.32)}.concept-name{font-size:12px;font-weight:550}.concept-desc{margin:8px 0 0 39px;color:var(--muted);font-size:10px;line-height:1.6}.player.micro{border-top:0;padding-top:0;margin-top:8px}.micro .row{gap:8px}.micro .play{width:23px;height:23px;background:transparent;border:0}.micro .play svg{width:12px;height:12px}.micro .track-meta{margin-bottom:0;min-width:0}.micro .track-meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.micro .range{height:2px}.micro .replay{width:19px;height:19px}.micro .replay svg{width:12px;height:12px}.micro .track{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}.micro .track-meta time{font-size:9px}.tag{margin-left:auto;border-radius:99px;padding:4px 8px;background:rgba(56,217,197,.07);color:rgba(56,217,197,.76);font-size:9px;white-space:nowrap}.note{margin-top:25px;color:rgba(255,255,255,.34);font-size:10px;line-height:1.65}.note strong{color:rgba(255,255,255,.62);font-weight:500}@media(max-width:560px){.shell{padding-top:28px}.chat{margin-top:24px}.message{gap:7px}.avatar{width:26px;height:26px;flex-basis:26px}.bubble{padding:10px 11px}.concept{padding:13px 12px}.concept-desc{margin-left:35px}.row{gap:7px}.play{width:26px;height:26px}.track-meta{font-size:8px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="eyebrow">Duet AI / Audio control study</div>
+  <h1>同样的长度，少一点存在感</h1>
+  <p class="intro">气泡宽度固定，音频进度仍铺满气泡内的可用宽度。这里只缩小播放控件和进度线的视觉重量，不改变可拖动范围。</p>
+  <section class="chat" aria-label="播放器样式对比">
+    <article class="concept">
+      <div class="concept-head"><span class="num">01</span><span class="concept-name">细线完整进度</span><span class="tag">高度更低</span></div>
+      <div class="message talker">
+        <div class="avatar talker" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="15" rx="5"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg></div>
+        <div class="bubble talker"><div class="meta"><span class="who">Talker</span><span>语音转写</span><time class="time">00:35</time><span class="tag">已回答</span></div><div class="body">Okay, what's the weather in Shanghai?</div>
+          <div class="player"><div class="row"><button class="play" aria-label="播放原始录音" onclick="toggle(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/></svg></button><div class="track"><div class="track-meta"><span>原始录音</span><time>0:04</time></div><input class="range" type="range" value="8" aria-label="原始录音进度" oninput="fill(this)"></div><button class="replay" aria-label="从头播放"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg></button></div></div>
+          <div class="reference">↳ Q-206 · What's the weather in Shanghai?</div>
+        </div>
+      </div>
+      <p class="concept-desc">保留“播放按钮 + 名称/时长 + 完整进度条 + 重播”。按钮缩至 28px，进度线降到 2px，并减少上下留白。</p>
+    </article>
+    <article class="concept">
+      <div class="concept-head"><span class="num">02</span><span class="concept-name">单行迷你播放器</span><span class="tag">更紧凑</span></div>
+      <div class="message">
+        <div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4m-4 5h.01M16 13h.01M9 17h6"/></svg></div>
+        <div class="bubble"><div class="meta"><span class="who">Duet</span><span>自动回答</span><span class="time">00:35</span><span class="tag">已发送</span></div><div class="body">Let me check that.</div>
+          <div class="player micro"><div class="row"><button class="play" aria-label="播放 AI 语音" onclick="toggle(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/></svg></button><div class="track"><div class="track-meta"><span>英文语音</span><time>0:03</time></div><input class="range" type="range" value="8" aria-label="AI 语音进度" oninput="fill(this)"></div><button class="replay" aria-label="从头播放"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg></button></div></div>
+          <div class="reference">↳ Q-206 · What's the weather in Shanghai?</div>
+        </div>
+      </div>
+      <p class="concept-desc">名称、完整长度的细进度线、时长和重播排在同一行。播放控件更短，但横向进度仍接近整条气泡宽度。</p>
+    </article>
+  </section>
+  <p class="note"><strong>对比建议：</strong>01 保留原有播放器结构，辨识最直接；02 占用高度更少，适合每条消息都带语音的连续通话记录。两个方案的进度线都可以拖动，点击播放按钮可切换播放图标。</p>
+</main>
+<script>
+function fill(input){input.style.setProperty('--fill',input.value+'%')}
+function toggle(button){const playing=button.dataset.playing==='true';button.dataset.playing=String(!playing);button.setAttribute('aria-label',playing?'播放语音':'暂停语音');button.innerHTML=playing?'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/></svg>':'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM15 5h4v14h-4z"/></svg>'}
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words",
+  "license": "CC-BY-4.0",
+  "attribution": "LDNOOBW contributors; original list retained without modifications; lexical signals only.",
+  "files": {
+    "en": {
+      "sha256": "af851ecef1d5f212caba17339b12ac39cc2fef7d78c74876f67237644fcee8bd",
+      "source_url": "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en"
+    },
+    "zh": {
+      "sha256": "a1d9aa037c8b039ef3b40148b3364ce2ca62ce4a955b7082a16ad99f6cbd1bc0",
+      "source_url": "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/zh"
+    },
+    "LICENSE": {
+      "sha256": "55bfbc1759943f7d19acfc68e35644b7fbe10cd8d39ab3551ce5ecff5dda9979",
+      "source_url": "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/LICENSE"
+    }
+  },
+  "upstream_commit": "5faf2ba42d7b1c0977169ec3611df25a3c08eb13",
+  "retrieved_at": "2026-10-22",
+  "retained_entries": "All original en/zh entries, interpreted only as lexical evidence.",
+  "excluded_entries": []
+}

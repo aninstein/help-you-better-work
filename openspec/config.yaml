@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  项目为 Duet AI：React/TypeScript + FastAPI/Python 3.12 + LangChain，
+  SQLite 单进程状态库，Talker 注册目录与单一 Hinter Demo 身份，Talker 所有的 Markdown LLM Wiki。
+  原始需求见 specs/001-dual-channel-voice-agent；当前代码与实现状态是现状依据。
+  消息保留录音上传和整段STT，新输入默认自动回复；历史私有草稿仍保留。realtime_call已实现
+  AudioWorklet 持续 PCM、sherpa-onnx 在线 ASR、Kokoro 输出及 Hinter 干预。
+  当前修复重点为误打断、短停顿切碎、大写转写、识别准确性与独立直连校正 Agent；
+  fix-call-turn-taking 定义约三秒有效静音提交一个轮次，不能将 ASR endpoint 直接作为消息边界。
+  最新 call-conversation-scheduling 澄清三秒为倾听到思考转换，处理共用十秒预算；
+  长段发言独立拆题，普通问题先答，需要人工的题持续挂起、后续补答，不强制一问一答。
+  improve-natural-voice-interaction 为最新已实施P0设计：用户要求不拘泥此前三秒参数，
+  借鉴豆包公开原则改为音频/语义动态交接、意图插话和按需校正；
+  协议3承载新行为，协议2兼容固定静音；实际验证及未实施P1以implementation-status为准。
+  2026-10-22用户已授权四个change实施，核心功能已接入：default-auto-response、
+  async-hinter-wiki、conversational-call-feedback、streaming-response-speech。
+  新设计要求三入口默认自动回答、少量明确人工例外、异步Hinter修改Wiki、
+  先自然回应再处理慢任务、真正生成中短句输出/TTS和全程可取消。
+  用生成前适用约束快照与最新版本段级检查替代无差别整答总审，不能删除Wiki约束。
+  实施与边界见response-flow-implementation.md，依赖见response-flow-redesign.md。
+  用户明确优先功能，不继续适配历史审核测试或扩建门禁/题库，云双向TTS仍属可选增强。
+  用户曾批准此前增量实施；第一版优先功能落地，使用持续 PCM WebSocket 路径，
+  保留必要的提示/Wiki/中断控制，不建设额外审批平台或测试题库。
+  旧 constitution 的逐题审核规则与通话自动回答冲突；修订方案写入本 change，
+  实施通话模式时同步按模式修订，不能将其误用于否决已授权的规格设计。
+  使用中文解释，OpenSpec requirement/scenario 标记与 SHALL/MUST 使用标准格式。
+  2026-10-25最新产品方向见personal-employee-plan.md：用户选择全面真实接入DeerFlow，
+  以通用个人员工/会议记录助手为核心，问题形式为展示投影，后续扩展摘要，淡化历史逐题问答机制。
+  新增adopt-deerflow-personal-agent与add-account-rbac-mysql两个待实施change，
+  统一手机/邮箱注册和密码登录，Talker与Hinter管理员RBAC，默认Hinter Admin随机初始密码，
+  将业务/记忆/运行时持久状态迁入MySQL，并规划独立Docker、Compose、迁移和部署后验证。
+  这些是已明确的目标规格，尚未改造当前运行服务；当前实现仍以代码与实施记录为准。
+
+rules:
+  specs:
+    - 每个 requirement 必须可验收，覆盖正常流程、并发插话、失败与角色隔离。
+    - 区分输入流、控制事件和输出音频；不能将分片上传整段录音称为实时通话。
+  design:
+    - 性能数字必须标为拟定验收目标，不得声称已实测达标。
+    - 新模式不得继承无限制 bash、MCP 或未经批准的数据查询权限。
+  tasks:
+    - 任务按实际实施与验证结果勾选；调研与文档验证不等于功能已经实现。

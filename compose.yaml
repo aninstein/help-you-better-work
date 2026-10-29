@@ -1,0 +1,137 @@
+name: duet-employee
+x-application: &application
+  build:
+    context: .
+    args:
+      DUET_UID: ${DUET_UID:-1000}
+      NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+      DEBIAN_MIRROR: ${DEBIAN_MIRROR:-https://deb.debian.org}
+  image: duet-personal-employee:latest
+  env_file:
+    - path: .env
+      required: false
+  environment: &environment
+    DUET_DATA_DIR: /app/data
+    DEER_FLOW_HOME: /app/data/deerflow-files
+    DEER_FLOW_PROJECT_ROOT: /app
+    DEER_FLOW_DATE_TIMEZONE: ${DEER_FLOW_DATE_TIMEZONE:-Asia/Shanghai}
+    MYSQL_HOST: mysql
+    MYSQL_PORT: '3306'
+    MYSQL_DATABASE: duet
+    MYSQL_USER: duet
+    MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+    BOOTSTRAP_ADMIN_FILE: /app/operator/bootstrap-admin.json
+    OLLAMA_BASE_URL: http://ollama:11434
+    WHISPER_MODEL_CACHE: /app/data/models/whisper
+    HF_HUB_DISABLE_XET: '1'
+    SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+  secrets:
+    - mysql_password
+  volumes:
+    - agent-files:/app/data
+  init: true
+  restart: unless-stopped
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4.7@sha256:0426ec38c7a10aa45ba383887df7878f74ee70e2fd589c7b69207f3577901903}
+    environment:
+      MYSQL_DATABASE: duet
+      MYSQL_USER: duet
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets: [mysql_password, mysql_root_password]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD="$$(cat /run/secrets/mysql_password)" mysql --user=duet --database=duet --execute="SELECT 1" --silent']
+      interval: 5s
+      timeout: 3s
+      retries: 40
+    restart: unless-stopped
+  migrate:
+    <<: *application
+    command: [python, -m, app.employee.migrate]
+    depends_on:
+      mysql: {condition: service_healthy}
+    restart: 'no'
+  bootstrap-admin:
+    <<: *application
+    volumes:
+      - agent-files:/app/data
+      - ./.runtime/bootstrap:/app/operator:ro
+    command: [python, -m, app.employee.cli, bootstrap]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: 'no'
+  web:
+    <<: *application
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8818']
+    ports: ['127.0.0.1:${DUET_PORT:-8818}:8818']
+    depends_on:
+      mysql: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      bootstrap-admin: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8818/readyz')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 12
+  agent-worker:
+    <<: *application
+    command: [python, -m, app.employee.worker]
+    depends_on:
+      mysql: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      bootstrap-admin: {condition: service_completed_successfully}
+      model-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -m, app.employee.cli, worker-health]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 12
+  projection-worker:
+    <<: *application
+    environment:
+      <<: *environment
+      AGENT_WORKER_KIND: projection
+    command: [python, -m, app.employee.worker]
+    depends_on:
+      mysql: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      bootstrap-admin: {condition: service_completed_successfully}
+      model-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -m, app.employee.cli, worker-health]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 12
+  ollama:
+    image: ollama/ollama:0.40.7
+    cpus: ${OLLAMA_CPUS:-4}
+    volumes: [ollama-data:/root/.ollama]
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+  model-init:
+    image: ollama/ollama:0.40.7
+    entrypoint: [/bin/sh, -c]
+    command: ['ollama show "$${OLLAMA_MODEL}" >/dev/null 2>&1 || ollama pull "$${OLLAMA_MODEL}"']
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    depends_on:
+      ollama: {condition: service_healthy}
+    restart: 'no'
+secrets:
+  mysql_password:
+    file: .runtime/secrets/mysql-password
+  mysql_root_password:
+    file: .runtime/secrets/mysql-root-password
+volumes:
+  mysql-data:
+  agent-files:
+  ollama-data:

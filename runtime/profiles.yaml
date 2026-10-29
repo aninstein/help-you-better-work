@@ -1,0 +1,9 @@
+version: 1
+agent_id: personal-employee
+base_prompt: profiles/personal-employee.md
+default_profile: meeting_assistant
+profiles:
+  meeting_assistant:
+    skill: meeting-assistant
+    presentation_modes: [questions]
+    description: 会议记录、资料检索、问题梳理和个人工作跟进

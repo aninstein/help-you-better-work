@@ -1,0 +1,4 @@
+interface:
+  display_name: "评测驱动自进化"
+  short_description: "运行评测并迭代核心与记忆存储提示词，输出固定模板 HTML 报告"
+  default_prompt: "使用 $eval-driven-self-evolving 运行评测，按报告优化允许修改的 prompt，记录每轮改动与三轮未解决问题。"

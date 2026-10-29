@@ -1,0 +1,655 @@
+{
+  "catalog": "regressions/user-feedback.json",
+  "generated_at": "2026-10-22T21:07:06.170217+00:00",
+  "verification": "deterministic_pytest_references",
+  "status": "failed",
+  "scenario_count": 34,
+  "passed_scenarios": 33,
+  "unique_test_functions": 55,
+  "pytest_exit_code": 1,
+  "live_status": "not_run",
+  "manual_rubric_status": "not_run",
+  "limitation": "pytest_nodes 关联已有确定性回归测试；使用合成数据、临时存储和模型/网络替身。通过只代表这些测试断言通过，不代表真实模型理解或外网可用性通过。",
+  "cases": [
+    {
+      "id": "ordinary-dau-definition",
+      "group": "routing",
+      "title": "DAU 定义直接回答",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_public_metrics.py::test_metric_definition_is_answered_without_a_lookup",
+          "status": "passed",
+          "parameter_cases": 3
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "public-shanghai-weather",
+      "group": "routing",
+      "title": "上海天气必须真实联网",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_live_tools.py::test_actual_chat_path_executes_lookup_and_projects_result",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_routing_policy.py::test_invalid_search_keywords_recover_through_current_response_path",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_future_search_promise_is_executed_before_final_answer",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "public-tiktok-metrics",
+      "group": "routing",
+      "title": "TikTok 营收与活跃用户先查公开来源",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_public_metrics.py::test_public_metric_names_cannot_trigger_human_approval",
+          "status": "passed",
+          "parameter_cases": 24
+        },
+        {
+          "node": "tests/test_contextual_replies.py::test_partial_public_evidence_keeps_the_missing_metric_warning",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "internal-missing-evidence",
+      "group": "routing",
+      "title": "明确内部业务数据缺依据才请求 Hinter",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_scope_is_model_metadata_not_a_product_name",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_public_metrics.py::test_explicit_internal_data_never_leaks_through_a_public_query",
+          "status": "passed",
+          "parameter_cases": 12
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "internal-grounded-wiki",
+      "group": "routing",
+      "title": "Wiki 已有匹配事实时直接回答内部问题",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_public_metrics.py::test_matching_internal_facts_can_still_answer_directly",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_contextual_replies.py::test_claimed_wiki_evidence_must_quote_supplied_material",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "contextual-scope-no-product-rule",
+      "group": "routing",
+      "title": "由模型语义确定数据范围",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_scope_is_model_metadata_not_a_product_name",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_contextual_replies.py::test_wiki_scope_context_does_not_count_as_the_requested_public_fact",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "explicit-human-rule",
+      "group": "routing",
+      "title": "明确人工确认规则优先于公开查询",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_public_metrics.py::test_operator_confirmation_rule_precedes_public_lookup",
+          "status": "passed",
+          "parameter_cases": 3
+        },
+        {
+          "node": "tests/test_public_metrics.py::test_confirmation_is_retained_when_public_search_runs_after_approval",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "mixed-public-internal",
+      "group": "routing",
+      "title": "复合问题分别分流",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_public_metrics.py::test_current_response_flow_splits_public_metric_and_internal_outcome",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "prohibition-visible-refusal",
+      "group": "prohibition",
+      "title": "命中禁令要完成英文拒答",
+      "status": "failed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_live_call_prohibition_finishes_with_one_spoken_refusal",
+          "status": "passed",
+          "parameter_cases": 2
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_fixed_refusal_exception_cannot_publish_other_content",
+          "status": "failed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "prohibition-before-asr-clarification",
+      "group": "prohibition",
+      "title": "实体轻微转写歧义不绕过广义禁令",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_uncertain_transcription_still_checks_applicable_prohibition",
+          "status": "passed",
+          "parameter_cases": 4
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_active_prohibition_precedes_lookup_clarification_and_approval",
+          "status": "passed",
+          "parameter_cases": 5
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "next-turn-consistent-boundary",
+      "group": "prohibition",
+      "title": "仅后续生效在入站和发布阶段边界一致",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_next_turn_guidance_has_same_boundary_before_and_after_question_creation",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_live_call_prohibition_finishes_with_one_spoken_refusal",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "history-is-not-active-policy",
+      "group": "prohibition",
+      "title": "Wiki 历史记录不自动变成现行禁令",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_historical_hint_and_answer_logs_are_not_current_runtime_rules",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "semantic-prohibition-active-ids",
+      "group": "prohibition",
+      "title": "语义匹配且仅接受有效规则 ID",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_private_prohibition_gate_uses_model_semantics_and_active_rule_ids",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "unrelated-question-after-ban",
+      "group": "prohibition",
+      "title": "局部禁令不封禁正常问题",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_publication_uses_answer_model_for_semantic_rule_scope",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_public_metrics.py::test_metric_definition_is_answered_without_a_lookup",
+          "status": "passed",
+          "parameter_cases": 3
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "old-approval-cannot-override-ban",
+      "group": "prohibition",
+      "title": "旧人工批准不能覆盖新禁令",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_confirming_an_old_manual_rule_cannot_override_a_new_prohibition",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "speech-cleanup-before-routing",
+      "group": "transcript",
+      "title": "高置信转写也清理口头禅与重复",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_input_refinement.py::test_high_quality_asr_still_gets_semantic_cleanup",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_actual_response_path_routes_effective_input_once",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "speech-clarify-city-not-filler",
+      "group": "transcript",
+      "title": "只澄清缺失城市，不追问 MURM",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_input_refinement.py::test_noisy_preface_removed_without_guessing_city",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_clarification_targets_missing_city_not_filler",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_clean_final_asr_does_not_turn_false_starts_into_prohibition",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "speech-protect-negation-identifiers",
+      "group": "transcript",
+      "title": "清洗不删除真实否定或改动标识",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_input_refinement.py::test_disputed_negation_and_identifier_remain_protected",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_repeated_prohibition_is_deduplicated_but_not_deleted",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_input_refinement.py::test_refusal_is_not_discarded_as_filler",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "speech-filler-only-no-question",
+      "group": "transcript",
+      "title": "纯口头禅不创建问题",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_input_refinement.py::test_only_filler_does_not_create_a_question",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "hinter-facts-after-search-failure",
+      "group": "hinter",
+      "title": "匹配的已核实事实替换失败搜索",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_full_call_hint_is_bound_to_the_active_question",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_contextual_replies.py::test_hinter_fact_replaces_failed_search_or_explains_metric_gap",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "hinter-wrong-metric-gap",
+      "group": "hinter",
+      "title": "人数不能当作营收依据",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_hinter_fact_replaces_failed_search_or_explains_metric_gap",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "hinter-cancels-old-search",
+      "group": "hinter",
+      "title": "纠正后取消过期查询",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_correction_cancels_inflight_lookup_before_using_new_facts",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "retry-original-intent",
+      "group": "hinter",
+      "title": "Try again 沿用原问题",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_try_again_reuses_the_original_question_and_query",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "search-provider-rss",
+      "group": "web_evidence",
+      "title": "Bing 网页与新闻结果能正常返回",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_bing_merges_news_and_ranks_before_truncating",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "weather-source-freshness",
+      "group": "web_evidence",
+      "title": "当前天气不接受气候常识或旧观测",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_weather_requires_fresh_source_even_if_model_accepts_a_climate_page",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "public-partial-evidence",
+      "group": "web_evidence",
+      "title": "部分公开证据保留口径与缺项",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_partial_public_evidence_keeps_the_missing_metric_warning",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "public-evidence-exact-quote",
+      "group": "web_evidence",
+      "title": "证据引用必须存在于抓取正文",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_public_evidence_extraction_requires_an_actual_source_quote",
+          "status": "passed",
+          "parameter_cases": 2
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "search-waits-for-supporting-page",
+      "group": "web_evidence",
+      "title": "导航页不能抢先终止有效报告读取",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_contextual_replies.py::test_fast_navigation_pages_do_not_cancel_a_supporting_report",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_contextual_replies.py::test_long_page_retains_metric_evidence_beyond_navigation",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "completed-search-not-repeated",
+      "group": "web_evidence",
+      "title": "已有查询结果不重新开启工具循环",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_agent_tools.py::test_completed_public_lookup_answers_without_starting_another_tool_loop",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "reply-no-empty-flood",
+      "group": "reply_lifecycle",
+      "title": "失败或禁答不刷空白回复",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_empty_failure_projection_keeps_one_and_preserves_sent_content",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_rejected_acknowledgements_do_not_create_persistent_error_cards",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_retry_routing_failure_does_not_append_more_empty_replies",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_route_json_recovers_once_without_public_speech",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_reply_rejection.py::test_new_prohibition_cancels_preparing_search_without_error_replies",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "audio-budget-after-generation",
+      "group": "reply_lifecycle",
+      "title": "生成完成后慢速播报不触发生成超时",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_reply_rejection.py::test_ready_answer_survives_slow_publication_and_gets_its_own_tts_budget",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "lark-document-tool-routing",
+      "group": "tool_extensions",
+      "title": "飞书文档走 lark-doc，认证错误不能伪装正文",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_agent_tools.py::test_skills_and_document_routing",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_agent_tools.py::test_private_document_links_never_go_to_public_search",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_agent_tools.py::test_document_links_preload_even_when_intake_omits_them",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_live_tools.py::test_cli_exit_zero_does_not_turn_auth_failure_into_document_evidence",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "mcp-current-response-path",
+      "group": "tool_extensions",
+      "title": "MCP 工具接到当前问答链路",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_agent_tools.py::test_mcp_stdio_discovery_calls_and_failure_isolation",
+          "status": "passed",
+          "parameter_cases": 1
+        },
+        {
+          "node": "tests/test_agent_tools.py::test_current_call_reasoner_can_discover_and_execute_mcp",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    },
+    {
+      "id": "bash-local-files",
+      "group": "tool_extensions",
+      "title": "本地文件工具可执行且有输出与超时边界",
+      "status": "passed",
+      "tests": [
+        {
+          "node": "tests/test_agent_tools.py::test_bash_reads_writes_truncates_and_times_out",
+          "status": "passed",
+          "parameter_cases": 1
+        }
+      ],
+      "live_status": "not_run",
+      "manual_rubric_status": "not_run"
+    }
+  ]
+}

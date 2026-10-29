@@ -1,0 +1,10 @@
+lockfileVersion: "1.0"
+extensions:
+  - identifier: skills:github.com/larksuite/cli/lark-doc
+    agents: []
+    link: copy
+    source:
+      kind: git
+      url: https://github.com/larksuite/cli.git
+      path: skills/lark-doc/SKILL.md
+      archive_digest: sha1:6e929318cdcd6dbd81202fac754887ae3dd0705c

@@ -1,0 +1,28 @@
+# 拟定配置，仅供设计；不是当前运行配置，不应直接复制覆盖现有策略。
+version: response-v2-proposed
+default_action: answer
+actions:
+  general_knowledge: answer
+  subjective_or_new_topic: answer
+  mild_language: answer
+  public_current_fact: lookup
+  unclear_user_intent: clarify
+  unavailable_capability: limited_answer
+  actionable_harm: refuse
+human_wait_reasons:
+  - human_confirmation_required
+  - human_evidence_required
+  - constraint_conflict
+guards:
+  keyword_match_is_only_a_signal: true
+  unknown_category_does_not_imply_human_wait: true
+  private_data_never_becomes_public_search: true
+  prohibition_is_not_a_request_for_approval: true
+  failure_does_not_imply_human_wait: true
+example_explicit_rule:
+  id: quote-confirmation-example
+  kind: require_human
+  scope: session
+  match: final_price_quote
+  action: await_human
+  reason: 正式报价格前由 Hinter 确认

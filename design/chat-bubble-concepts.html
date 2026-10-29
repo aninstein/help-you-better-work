@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Duet AI · 聊天气泡方案</title>
+<style>
+:root{color-scheme:dark;--bg:#090b12;--panel:#11141f;--panel2:#0e1119;--line:rgba(255,255,255,.09);--muted:rgba(245,246,255,.48);--soft:rgba(245,246,255,.68);--white:#f2f3f8;--teal:#38d9c5;--purple:#a493ff;--orange:#f5ad4e;--green:#54d6ae;--sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+*{box-sizing:border-box}body{margin:0;min-width:320px;background:radial-gradient(ellipse at 18% -12%,rgba(56,217,197,.10),transparent 34%),radial-gradient(ellipse at 90% 0%,rgba(155,140,255,.13),transparent 36%),var(--bg);color:var(--white);font-family:var(--sans);font-size:14px}.shell{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:44px 0 60px}.eyebrow{font:11px ui-monospace,monospace;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}h1{font-size:clamp(24px,3vw,34px);font-weight:570;letter-spacing:-.04em;margin:12px 0 8px}.intro{color:var(--muted);line-height:1.7;margin:0;max-width:740px}.topline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:27px}.badge{border:1px solid var(--line);border-radius:99px;padding:8px 11px;color:var(--muted);font-size:11px;white-space:nowrap}.tabs{display:flex;gap:6px;margin:28px 0 18px;padding:4px;background:#0d1017;border:1px solid var(--line);border-radius:13px;width:max-content;max-width:100%;overflow:auto}.tab{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:9px 13px;border-radius:9px;white-space:nowrap;cursor:pointer}.tab[aria-selected="true"]{background:#202332;color:var(--white);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}.stage{border:1px solid rgba(255,255,255,.08);border-radius:20px;background:rgba(13,16,24,.78);overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.2)}.stagehead{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}.stage-title{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted)}.live{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 9px rgba(84,214,174,.7)}.stage-meta{font:10px ui-monospace,monospace;color:rgba(255,255,255,.3)}.chat{padding:26px clamp(16px,5vw,64px) 32px;min-height:570px;display:flex;flex-direction:column;gap:21px}.msg{display:flex;align-items:flex-start;gap:12px;max-width:100%}.avatar{width:32px;height:32px;flex:0 0 32px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--teal)}.avatar.ai{color:var(--purple)}.avatar.hinter-avatar{color:var(--orange)}.avatar svg{width:16px;height:16px}.bubble{position:relative;min-width:0;max-width:880px;flex:1;border:1px solid rgba(56,217,197,.19);background:linear-gradient(115deg,rgba(56,217,197,.045),rgba(255,255,255,.012));border-radius:4px 15px 15px 15px;padding:13px 16px 12px}.msg.ai .bubble{border-color:rgba(164,147,255,.22);background:linear-gradient(115deg,rgba(164,147,255,.055),rgba(255,255,255,.012));border-radius:4px 15px 15px 15px}.msg.hinter .bubble{border-color:rgba(245,173,78,.18);background:linear-gradient(115deg,rgba(245,173,78,.045),rgba(255,255,255,.012));border-radius:4px 15px 15px 15px}.meta{display:flex;align-items:center;gap:9px;min-height:15px;color:var(--muted);font-size:10px}.meta .name{font-size:11px;font-weight:560;color:var(--teal)}.ai .meta .name{color:var(--purple)}.hinter .meta .name{color:var(--orange)}.time{font:10px ui-monospace,monospace;color:rgba(255,255,255,.31)}.actions{margin-left:auto;display:flex;align-items:center;gap:4px}.icon{width:26px;height:26px;border:0;border-radius:7px;background:transparent;color:rgba(255,255,255,.38);display:grid;place-items:center;cursor:pointer}.icon:hover{background:rgba(255,255,255,.07);color:var(--white)}.icon svg{width:14px;height:14px}.body{font-size:15px;line-height:1.65;letter-spacing:-.01em;color:rgba(248,248,252,.9);margin-top:7px;overflow-wrap:anywhere}.ai .body{font-size:16px}.context{display:flex;align-items:center;gap:9px;min-width:0;margin-top:11px;padding:7px 9px;border:1px solid rgba(255,255,255,.065);border-radius:9px;background:rgba(0,0,0,.12);color:rgba(255,255,255,.52);font-size:10px}.qid{font:10px ui-monospace,monospace;color:rgba(255,255,255,.36);white-space:nowrap}.qtext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.status{display:inline-flex;align-items:center;justify-content:center;height:22px;line-height:1;border:1px solid rgba(84,214,174,.28);background:rgba(84,214,174,.06);color:var(--green);border-radius:99px;padding:0 8px;font-size:9px;white-space:nowrap}.foot{display:flex;align-items:center;gap:7px;margin-top:9px;color:rgba(255,255,255,.39);font-size:10px}.foot svg{width:13px;height:13px;color:var(--green)}.audio{display:flex;align-items:center;gap:9px;margin-top:11px;padding-top:9px;border-top:1px solid rgba(255,255,255,.075)}.play{width:29px;height:29px;flex:0 0 29px;border:1px solid rgba(164,147,255,.18);border-radius:50%;background:rgba(164,147,255,.11);color:var(--purple);display:grid;place-items:center;cursor:pointer}.talker-audio .play{border-color:rgba(56,217,197,.18);background:rgba(56,217,197,.10);color:var(--teal)}.play svg{width:14px;height:14px}.track{flex:1;min-width:0}.tracktop{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;color:rgba(255,255,255,.4);font-size:9px}.seek{appearance:none;width:100%;height:3px;margin:0;display:block;border-radius:3px;background:linear-gradient(90deg,#a493ff 0%,#a493ff var(--p,7%),rgba(255,255,255,.16) var(--p,7%));cursor:pointer}.talker-audio .seek{background:linear-gradient(90deg,#38d9c5 0%,#38d9c5 var(--p,7%),rgba(255,255,255,.16) var(--p,7%))}.seek::-webkit-slider-thumb{appearance:none;width:8px;height:8px;border-radius:50%;background:var(--purple)}.talker-audio .seek::-webkit-slider-thumb{background:var(--teal)}.concept-note{display:flex;align-items:flex-start;gap:10px;padding:15px 19px;border-top:1px solid var(--line);background:rgba(255,255,255,.012);color:var(--muted);font-size:11px;line-height:1.65}.concept-note strong{color:var(--white);font-weight:550;white-space:nowrap}.label-pill{display:inline-flex;align-items:center;border-radius:99px;padding:3px 7px;font-size:9px;color:var(--purple);background:rgba(164,147,255,.1);margin-left:2px}.hidden{display:none!important}
+/* B: transcript-first, metadata moves to a narrow leading rail */
+[data-mode="b"] .chat{gap:14px;padding-top:30px}.b-row{display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;max-width:820px}.b-row .avatar{grid-column:1;grid-row:1;border:0;background:transparent}.b-row .bubble{grid-column:2;border-radius:12px;padding:11px 14px 10px}.b-row.ai .bubble{background:#111321;border-color:rgba(164,147,255,.13)}.b-row.hinter .bubble{background:#15130f;border-color:rgba(245,173,78,.13)}.b-row .context{margin-top:9px;padding:6px 8px}.b-row .body{margin-top:5px}.b-row .audio{margin-top:8px;padding-top:7px}.b-row .foot{margin-top:7px}
+/* C: compact message bubble with inline status and a quiet question reference */
+[data-mode="c"] .chat{gap:15px;padding-left:clamp(16px,5vw,60px);padding-right:clamp(16px,5vw,60px)}.c-row{display:flex;width:100%;gap:11px;max-width:900px}.c-row .bubble{width:100%;padding:11px 14px;border-radius:12px}.c-row .context{display:none}.c-row .audio{margin-top:8px;padding-top:7px}.c-row .track{max-width:480px}.message-state{color:rgba(255,255,255,.42);font-size:10px;white-space:nowrap}.question-state{font-size:9px;padding:3px 7px}.message-reference{display:flex;align-items:center;gap:5px;margin-top:8px;min-width:0;color:rgba(255,255,255,.30);font-size:10px;line-height:1.4}.message-reference>span:first-child{color:rgba(255,255,255,.26)}.reference-copy{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.c-row .foot{display:none}.stream-break{margin:1px 0 0 43px;display:flex;align-items:center;gap:9px;color:rgba(255,255,255,.27);font:9px ui-monospace,monospace}.stream-break:after{content:"";height:1px;background:rgba(255,255,255,.07);flex:1}
+@media(max-width:680px){.shell{width:calc(100% - 24px);padding-top:25px}.topline{align-items:flex-start}.badge{display:none}.chat{padding:18px 11px 22px;min-height:unset;gap:15px}.avatar{width:28px;height:28px;flex-basis:28px}.msg{gap:8px}.bubble{padding:10px 11px}.body{font-size:14px}.ai .body{font-size:15px}.context{gap:6px}.stagehead{padding:0 12px}.concept-note{padding:12px}.b-row{grid-template-columns:30px minmax(0,1fr);gap:7px}.b-row .avatar{width:26px;height:26px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="topline"><div><div class="eyebrow">Duet AI / Conversation study</div><h1>把对话还给内容</h1><p class="intro">当前气泡把身份、问题、状态和音频都堆成了大卡片。下面用同一组对话比较三种更紧凑的排法；切换方案查看完整宽度下的阅读效果。</p></div><span class="badge">概念稿 · 不修改现有产品</span></div>
+  <div class="tabs" role="tablist" aria-label="聊天气泡方案">
+    <button class="tab" role="tab" aria-selected="false" data-tab="a">A · 紧凑时间线</button><button class="tab" role="tab" aria-selected="false" data-tab="b">B · 正文优先</button><button class="tab" role="tab" aria-selected="true" data-tab="c">C · 气泡内引用</button>
+  </div>
+  <section class="stage" id="stage" data-mode="c" aria-label="聊天气泡设计预览">
+    <header class="stagehead"><div class="stage-title"><i class="live"></i><span>Talker 工作空间</span><span style="color:rgba(255,255,255,.24)">/</span><span>Session 06</span></div><span class="stage-meta">LIVE · 00:35</span></header>
+    <div class="chat">
+      <div class="msg talker-row">
+        <div class="avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 18.5a6.5 6.5 0 0 0 6.5-6.5V8a6.5 6.5 0 0 0-13 0v4a6.5 6.5 0 0 0 6.5 6.5Z"/><path d="M9 22h6m-3-3.5V22"/></svg></div>
+        <article class="bubble"><div class="meta"><span class="name">Talker</span><span>语音转写</span><time class="time">00:35</time><div class="actions"><button class="icon" title="复制文本" aria-label="复制文本" onclick="copyText(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div></div><div class="body">Okay, what's the weather in Shanghai?</div><div class="context"><span class="qid">Q-206</span><span class="qtext">What's the weather in Shanghai?</span><span class="status">已回答</span></div><div class="audio talker-audio"><button class="play" aria-label="播放原始录音" onclick="togglePlay(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/></svg></button><div class="track"><div class="tracktop"><span>原始录音</span><span class="duration">0:00 / 0:04</span></div><input class="seek" type="range" min="0" max="100" value="7" aria-label="原始录音进度"></div><button class="icon" title="从头播放" aria-label="从头播放" onclick="rewind(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg></button></div></article>
+      </div>
+      <div class="msg hinter">
+        <div class="avatar hinter-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/></svg></div>
+        <article class="bubble"><div class="meta"><span class="name">Hinter</span><span>私有提示</span><time class="time">00:35</time><div class="actions"><button class="icon" title="复制提示" aria-label="复制提示" onclick="copyText(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div></div><div class="body">查不到实时天气时，直接说明目前无法确认，不要猜测。</div><div class="context"><span class="qid">Q-206</span><span class="qtext">What's the weather in Shanghai?</span><span class="status" style="color:var(--orange);border-color:rgba(245,173,78,.24);background:rgba(245,173,78,.05)">已生效</span></div></article>
+      </div>
+      <div class="msg ai">
+        <div class="avatar ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4m-4 5h.01M16 13h.01M9 17h6M2 12v4m20-4v4"/></svg></div>
+        <article class="bubble"><div class="meta"><span class="name">Duet</span><span>自动回答</span><span class="label-pill">回应中</span><time class="time">00:35</time><div class="actions"><button class="icon" title="复制回答" aria-label="复制回答" onclick="copyText(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button><button class="icon withdraw" title="撤回消息" aria-label="撤回消息" onclick="withdraw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.6 10.6 0 0 1 12 5c5 0 9 4.2 10 7-.4 1.2-1.3 2.5-2.5 3.6M6.2 6.2C3.8 7.6 2.4 10 2 12c1 2.8 5 7 10 7 1.2 0 2.3-.2 3.3-.6"/></svg></button></div></div><div class="body">Let me check that.</div><div class="context"><span class="qid">Q-206</span><span class="qtext">What's the weather in Shanghai?</span><span class="status">已回答</span></div><div class="foot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 12 5 5L20 5"/><path d="m9 12 5 5L23 8"/></svg><span>自动回答 · 已发送</span></div><div class="audio"><button class="play" aria-label="播放英文回答" onclick="togglePlay(this)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/></svg></button><div class="track"><div class="tracktop"><span>英文语音</span><span class="duration">0:00 / 0:03</span></div><input class="seek" type="range" min="0" max="100" value="7" aria-label="英文语音进度"></div><button class="icon" title="从头播放" aria-label="从头播放" onclick="rewind(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg></button></div></article>
+      </div>
+      <div class="msg ai">
+        <div class="avatar ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4m-4 5h.01M16 13h.01M9 17h6M2 12v4m20-4v4"/></svg></div>
+        <article class="bubble"><div class="meta"><span class="name">Duet</span><span>自动回答</span><time class="time">00:36</time><div class="actions"><button class="icon" title="复制回答" aria-label="复制回答" onclick="copyText(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button><button class="icon withdraw" title="撤回消息" aria-label="撤回消息" onclick="withdraw(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.6 10.6 0 0 1 12 5c5 0 9 4.2 10 7-.4 1.2-1.3 2.5-2.5 3.6M6.2 6.2C3.8 7.6 2.4 10 2 12c1 2.8 5 7 10 7 1.2 0 2.3-.2 3.3-.6"/></svg></button></div></div><div class="body">I couldn't find the current weather in Shanghai with that search. Let me try a more specific query.</div><div class="context"><span class="qid">Q-206</span><span class="qtext">What's the weather in Shanghai?</span><span class="status">已回答</span></div><div class="foot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 12 5 5L20 5"/><path d="m9 12 5 5L23 8"/></svg><span>自动回答 · 已发送</span></div></article>
+      </div>
+    </div>
+    <div class="concept-note"><strong id="note-title">A · 紧凑时间线</strong><span id="note-text">在现有布局上收紧 padding 与间距；角色、时间、操作并入一行，问题引用压成单行，播放器变成细进度条。改动最小，历史信息仍然完整可见。</span></div>
+  </section>
+</main>
+<script>
+const stage=document.querySelector('#stage'),tabs=[...document.querySelectorAll('.tab')],titles={a:'A · 紧凑时间线',b:'B · 正文优先',c:'C · 气泡内引用'},notes={a:'在现有布局上收紧 padding 与间距；角色、时间、操作并入一行，问题引用压成单行，播放器变成细进度条。改动最小，历史信息仍然完整可见。',b:'把语音转写与 AI 回复呈现为轻量文本块，正文先被看见，身份和时间退到边缘；问题关联和语音控制都收紧。适合连续对话密集的通话记录。',c:'所有消息气泡保持同一列宽度，正文只影响换行；只缩短音频进度条。回答状态在左上角，已答标签靠近复制操作，关联问题是一句淡色引用。'};
+function setMode(mode){
+  const chat=document.querySelector('.chat');
+  [...chat.children].forEach(row=>{
+    const bubble=row.querySelector('.bubble');
+    if(row.classList.contains('c-row') && bubble){
+      bubble.querySelector('.message-reference')?.remove();
+      bubble.querySelector('.message-state')?.remove();
+      bubble.querySelector('.question-state')?.remove();
+      if(!bubble.querySelector('.context') && bubble.dataset.question){
+        const context=document.createElement('div');context.className='context';
+        context.innerHTML='<span class="qid"></span><span class="qtext"></span><span class="status"></span>';
+        context.querySelector('.qid').textContent=bubble.dataset.qid||'QUESTION';
+        context.querySelector('.qtext').textContent=bubble.dataset.question;
+        context.querySelector('.status').textContent=bubble.dataset.qstatus||'处理中';
+        bubble.append(context);
+      }
+    }
+    row.classList.remove('b-row','c-row');
+    if(mode==='b') row.classList.add('b-row');
+    if(mode==='c' && bubble){
+      row.classList.add('c-row');
+      const context=bubble.querySelector('.context');
+      const qid=context?.querySelector('.qid')?.textContent||'QUESTION';
+      const question=context?.querySelector('.qtext')?.textContent||'General conversation';
+      const status=context?.querySelector('.status')?.textContent||'处理中';
+      bubble.dataset.qid=qid;bubble.dataset.question=question;bubble.dataset.qstatus=status;
+      context?.remove();
+      const actions=bubble.querySelector('.actions');
+      if(actions && !row.classList.contains('ai')){
+        const badge=document.createElement('span');badge.className='status question-state';badge.textContent=status;actions.prepend(badge);
+      }
+      const foot=bubble.querySelector('.foot');
+      const meta=bubble.querySelector('.meta');
+      if(foot && meta){
+        const state=document.createElement('span');state.className='message-state';state.textContent='· 已发送';
+        meta.append(state);foot.remove();
+      }
+      const reference=document.createElement('div');reference.className='message-reference';
+      reference.innerHTML='<span aria-hidden="true">↳</span><span class="reference-copy"></span>';
+      reference.querySelector('.reference-copy').textContent=`${qid} · ${question}`;
+      bubble.append(reference);
+    }
+  });
+  stage.dataset.mode=mode;
+  tabs.forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===mode?'true':'false'));
+  document.querySelector('#note-title').textContent=titles[mode];document.querySelector('#note-text').textContent=notes[mode];
+}
+tabs.forEach(t=>t.addEventListener('click',()=>setMode(t.dataset.tab)));
+function copyText(btn){const text=btn.closest('.bubble').querySelector('.body')?.innerText||'';navigator.clipboard?.writeText(text).then(()=>{btn.title='已复制';setTimeout(()=>btn.title='复制文本',1000)}).catch(()=>{});}
+function withdraw(btn){const body=btn.closest('.bubble').querySelector('.body');if(body){body.textContent='已撤回 · 内容已隐藏';body.style.color='rgba(255,255,255,.38)';btn.closest('.bubble').querySelector('.audio')?.remove();btn.closest('.bubble').querySelector('.context')?.remove();btn.closest('.bubble').querySelector('.message-reference')?.remove();btn.remove();}}
+function togglePlay(btn){const icon=btn.querySelector('svg');const active=btn.dataset.playing==='true';btn.dataset.playing=String(!active);btn.setAttribute('aria-label',active?'播放语音':'暂停语音');icon.innerHTML=active?'<path d="M8 5.8c0-1.1 1.2-1.8 2.2-1.2l9.4 5.4a2.3 2.3 0 0 1 0 4L10.2 19A1.5 1.5 0 0 1 8 17.7V5.8Z"/>':'<path d="M7 5h4v14H7zM15 5h4v14h-4z"/>';}
+function rewind(btn){const track=btn.parentElement.querySelector('.seek');track.value=0;track.style.setProperty('--p','0%');}
+document.querySelectorAll('.seek').forEach(s=>s.addEventListener('input',()=>s.style.setProperty('--p',s.value+'%')));
+setMode('c');
+</script>
+</body>
+</html>

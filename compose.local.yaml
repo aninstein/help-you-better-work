@@ -1,0 +1,4 @@
+# Optional host debugging connection; production does not publish MySQL.
+services:
+  mysql:
+    ports: ['127.0.0.1:13316:3306']

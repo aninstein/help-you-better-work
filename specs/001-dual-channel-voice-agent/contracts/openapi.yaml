@@ -1,0 +1,640 @@
+openapi: 3.1.0
+info:
+  title: Duet AI Dual-channel Voice Agent API
+  version: 0.1.0
+  description: |
+    一期契约。认证令牌决定 tenant、actor 与 role，请求体中的角色信息一律不可信。
+    所有响应先经过后端字段级角色投影：Talker schema 永不包含 hint、reviewer、
+    review_notes、memory evidence/internal memory IDs、prompt 或 tool trace。
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Sessions
+  - name: Messages
+  - name: Questions
+  - name: Reviews
+  - name: Answers
+  - name: Memory
+  - name: Audio
+  - name: Realtime
+paths:
+  /sessions:
+    post:
+      tags: [Sessions]
+      summary: 创建会话
+      operationId: createSession
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSessionRequest' }
+      responses:
+        '201':
+          description: 已创建，按调用者角色返回视图
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /sessions/{session_id}:
+    get:
+      tags: [Sessions]
+      summary: 获取用于首次加载或重连恢复的会话快照
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 角色投影后的快照
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /sessions/{session_id}/messages:
+    post:
+      tags: [Messages]
+      summary: Talker 创建文字消息
+      operationId: createTextMessage
+      x-roles: [talker]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTextMessageRequest' }
+      responses:
+        '202':
+          description: 消息已接收并排队进入 Intake
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicMessage' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    get:
+      tags: [Messages]
+      summary: 获取消息时间线
+      operationId: listMessages
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Talker 不含 Hinter 私有消息；Hinter 可获得私有视图
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TalkerMessagePage'
+                  - $ref: '#/components/schemas/HinterMessagePage'
+  /sessions/{session_id}/audio-uploads:
+    post:
+      tags: [Audio, Messages]
+      summary: 创建 Talker 原音频上传并返回短期上传 URL
+      operationId: createAudioUpload
+      x-roles: [talker]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAudioUploadRequest' }
+      responses:
+        '201':
+          description: 上传授权
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AudioUploadGrant' }
+  /sessions/{session_id}/audio-uploads/{audio_id}/complete:
+    post:
+      tags: [Audio, Messages]
+      summary: 确认原音频上传完成并自动启动 STT
+      operationId: completeAudioUpload
+      x-roles: [talker]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/AudioId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompleteAudioUploadRequest' }
+      responses:
+        '202':
+          description: 已排队转写
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicMessage' }
+  /sessions/{session_id}/questions:
+    get:
+      tags: [Questions]
+      summary: 获取 CanonicalQuestion 队列
+      operationId: listQuestions
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/QuestionStatus' }
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 按角色投影的问题列表
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TalkerQuestionPage'
+                  - $ref: '#/components/schemas/HinterQuestionPage'
+  /sessions/{session_id}/reviews:
+    post:
+      tags: [Reviews]
+      summary: Hinter 原子批准或拒绝一个/多个问题
+      description: 批次中任一 scope、version 或 status 校验失败则整批回滚；approve 时原子创建 GenerationCommand。
+      operationId: createReview
+      x-roles: [hinter]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateReviewRequest' }
+      responses:
+        '201':
+          description: 审核决定；私有字段只返回 Hinter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HinterReviewView' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /sessions/{session_id}/answers:
+    get:
+      tags: [Answers]
+      summary: 获取答案
+      operationId: listAnswers
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 角色投影后的答案；Talker 无内部 evidence
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TalkerAnswerPage'
+                  - $ref: '#/components/schemas/HinterAnswerPage'
+  /sessions/{session_id}/memories:
+    get:
+      tags: [Memory]
+      summary: 获取当前会话客户的三层记忆视图
+      operationId: listMemories
+      x-scope-rule: tenant_id and customer_id are mandatory; turn also requires session_id
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: scope
+          in: query
+          schema: { $ref: '#/components/schemas/MemoryScope' }
+      responses:
+        '200':
+          description: Talker 只得公开摘要；Hinter 可见 evidence 元数据
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TalkerMemoryView'
+                  - $ref: '#/components/schemas/HinterMemoryView'
+  /sessions/{session_id}/audio/{audio_id}/playback:
+    post:
+      tags: [Audio]
+      summary: 获取原音频或 TTS 音频短期播放 URL
+      operationId: createPlaybackGrant
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/AudioId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: scope 复核后的短签 URL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaybackGrant' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /sessions/{session_id}/events:
+    get:
+      tags: [Realtime]
+      summary: SSE 只读事件降级通道
+      description: WebSocket 使用 `/api/v1/ws/sessions/{session_id}?after_sequence=N`；两者均在发布前执行角色投影。
+      operationId: streamEvents
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: after_sequence
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: "text/event-stream，data 为 RoleProjectedEvent"
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/RoleProjectedEvent' }
+        '409':
+          description: 游标过旧，客户端必须重取 snapshot
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ResyncProblem' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AudioId:
+      name: audio_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 16, maxLength: 128 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+  responses:
+    NotFound:
+      description: 资源不存在或调用者无权确认其存在
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: 版本、幂等 payload、状态或 active generation 冲突
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [customer_id, language]
+      properties:
+        customer_id: { type: string, format: uuid }
+        language: { type: string, example: en-US }
+    SessionBase:
+      type: object
+      additionalProperties: false
+      required: [id, customer_id, status, language, last_sequence, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        status: { type: string, enum: [active, ended] }
+        language: { type: string }
+        last_sequence: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+    TalkerSessionView:
+      allOf:
+        - $ref: '#/components/schemas/SessionBase'
+        - type: object
+          additionalProperties: false
+          required: [role, messages, questions, answers]
+          properties:
+            role: { const: talker }
+            messages: { type: array, items: { $ref: '#/components/schemas/PublicMessage' } }
+            questions: { type: array, items: { $ref: '#/components/schemas/TalkerQuestion' } }
+            answers: { type: array, items: { $ref: '#/components/schemas/TalkerAnswer' } }
+    HinterSessionView:
+      allOf:
+        - $ref: '#/components/schemas/SessionBase'
+        - type: object
+          additionalProperties: false
+          required: [role, messages, questions, answers]
+          properties:
+            role: { const: hinter }
+            messages: { type: array, items: { $ref: '#/components/schemas/HinterMessage' } }
+            questions: { type: array, items: { $ref: '#/components/schemas/HinterQuestion' } }
+            answers: { type: array, items: { $ref: '#/components/schemas/HinterAnswer' } }
+    SessionView:
+      oneOf:
+        - $ref: '#/components/schemas/TalkerSessionView'
+        - $ref: '#/components/schemas/HinterSessionView'
+      discriminator:
+        propertyName: role
+    CreateTextMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 10000 }
+    PublicMessage:
+      type: object
+      additionalProperties: false
+      required: [id, input_mode, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        input_mode: { type: string, enum: [voice, text] }
+        text: { type: [string, 'null'] }
+        final_transcript: { type: [string, 'null'] }
+        status:
+          type: string
+          enum: [uploaded, transcribing, transcript_final, intake_pending, intake_complete, transcription_failed, intake_failed]
+        source_audio: { oneOf: [{ $ref: '#/components/schemas/AudioPublicView' }, { type: 'null' }] }
+        created_at: { type: string, format: date-time }
+    HinterMessage:
+      allOf:
+        - $ref: '#/components/schemas/PublicMessage'
+        - type: object
+          properties:
+            intake_summary: { type: [string, 'null'] }
+    CreateAudioUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [content_type, size_bytes, checksum_sha256]
+      properties:
+        content_type: { type: string, enum: [audio/webm, audio/ogg, audio/wav, audio/mpeg] }
+        size_bytes: { type: integer, minimum: 1, maximum: 52428800 }
+        checksum_sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    AudioUploadGrant:
+      type: object
+      additionalProperties: false
+      required: [audio_id, upload_url, expires_at]
+      properties:
+        audio_id: { type: string, format: uuid }
+        upload_url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+    CompleteAudioUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [checksum_sha256]
+      properties:
+        checksum_sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    AudioPublicView:
+      type: object
+      additionalProperties: false
+      required: [id, kind, status]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [source, tts] }
+        status: { type: string, enum: [uploading, queued, synthesizing, ready, failed] }
+        duration_ms: { type: [integer, 'null'], minimum: 0 }
+    QuestionStatus:
+      type: string
+      enum: [pending_review, approved, rejected, generating, answered, failed]
+    TalkerQuestion:
+      type: object
+      additionalProperties: false
+      required: [id, display_no, text, status, duplicate_count, human_reviewed, version, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        display_no: { type: string, example: Q-201 }
+        text: { type: string }
+        status: { $ref: '#/components/schemas/QuestionStatus' }
+        duplicate_count: { type: integer, minimum: 1 }
+        human_reviewed: { type: boolean }
+        version: { type: integer, minimum: 1 }
+        created_at: { type: string, format: date-time }
+    HinterQuestion:
+      allOf:
+        - $ref: '#/components/schemas/TalkerQuestion'
+        - type: object
+          properties:
+            dedupe_confidence: { type: [number, 'null'], minimum: 0, maximum: 1 }
+            source_message_ids:
+              type: array
+              items: { type: string, format: uuid }
+            latest_review: { oneOf: [{ $ref: '#/components/schemas/HinterReviewView' }, { type: 'null' }] }
+    CreateReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [action, items]
+      properties:
+        action: { type: string, enum: [approve, reject] }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [question_id, version]
+            properties:
+              question_id: { type: string, format: uuid }
+              version: { type: integer, minimum: 1 }
+        hint:
+          type: [string, 'null']
+          maxLength: 4000
+          description: 私有；不得进入 Talker 的任意响应或事件
+        review_notes:
+          type: [string, 'null']
+          maxLength: 4000
+          description: 私有；不得进入 Talker 的任意响应或事件
+    HinterReviewView:
+      type: object
+      additionalProperties: false
+      required: [id, action, question_ids, reviewer_id, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, enum: [approve, reject] }
+        question_ids: { type: array, items: { type: string, format: uuid } }
+        reviewer_id: { type: string, format: uuid }
+        hint: { type: [string, 'null'] }
+        review_notes: { type: [string, 'null'] }
+        generation_id: { type: [string, 'null'], format: uuid }
+        created_at: { type: string, format: date-time }
+    TalkerAnswer:
+      type: object
+      additionalProperties: false
+      required: [id, question_ids, text, status, human_reviewed, tts_audio, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        question_ids: { type: array, items: { type: string, format: uuid } }
+        text: { type: string }
+        status: { type: string, enum: [text_completed, completed, failed] }
+        human_reviewed: { const: true }
+        tts_audio: { oneOf: [{ $ref: '#/components/schemas/AudioPublicView' }, { type: 'null' }] }
+        created_at: { type: string, format: date-time }
+    HinterAnswer:
+      allOf:
+        - $ref: '#/components/schemas/TalkerAnswer'
+        - type: object
+          properties:
+            review: { $ref: '#/components/schemas/HinterReviewView' }
+            memory_evidence:
+              type: array
+              items: { $ref: '#/components/schemas/MemoryEvidence' }
+            generation_status:
+              type: string
+              enum: [queued, leased, running, text_completed, tts_pending, completed, failed_retryable, failed_terminal, cancelled]
+    MemoryScope:
+      type: string
+      enum: [turn, short, long]
+    TalkerMemoryItem:
+      type: object
+      additionalProperties: false
+      required: [scope, summary, priority]
+      properties:
+        scope: { $ref: '#/components/schemas/MemoryScope' }
+        summary: { type: string }
+        priority: { type: string, enum: [P0, P1, P2] }
+    MemoryEvidence:
+      type: object
+      additionalProperties: false
+      required: [memory_id, scope, rank, used, summary]
+      properties:
+        memory_id: { type: string, format: uuid, description: internal; Hinter only }
+        scope: { $ref: '#/components/schemas/MemoryScope' }
+        rank: { type: integer, minimum: 1 }
+        used: { type: boolean }
+        summary: { type: string }
+    TalkerMemoryView:
+      type: object
+      additionalProperties: false
+      required: [priority_order, items]
+      properties:
+        priority_order:
+          type: array
+          prefixItems:
+            - { const: turn }
+            - { const: short }
+            - { const: long }
+        items: { type: array, items: { $ref: '#/components/schemas/TalkerMemoryItem' } }
+    HinterMemoryView:
+      type: object
+      additionalProperties: false
+      required: [priority_order, evidence]
+      properties:
+        priority_order:
+          type: array
+          prefixItems:
+            - { const: turn }
+            - { const: short }
+            - { const: long }
+        evidence: { type: array, items: { $ref: '#/components/schemas/MemoryEvidence' } }
+    PlaybackGrant:
+      type: object
+      additionalProperties: false
+      required: [audio_id, playback_url, expires_at]
+      properties:
+        audio_id: { type: string, format: uuid }
+        playback_url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+    PageMeta:
+      type: object
+      additionalProperties: false
+      required: [next_cursor]
+      properties:
+        next_cursor: { type: [string, 'null'] }
+    TalkerMessagePage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PublicMessage' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    HinterMessagePage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/HinterMessage' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    TalkerQuestionPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TalkerQuestion' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    HinterQuestionPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/HinterQuestion' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    TalkerAnswerPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TalkerAnswer' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    HinterAnswerPage:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/HinterAnswer' } }
+        page: { $ref: '#/components/schemas/PageMeta' }
+    EventBase:
+      type: object
+      additionalProperties: false
+      required: [event_id, session_id, sequence, type, occurred_at]
+      properties:
+        event_id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        sequence: { type: integer, minimum: 1 }
+        type:
+          type: string
+          enum: [message.updated, intake.completed, question.updated, review.completed, generation.updated, answer.completed, audio.ready, audio.failed, resync.required]
+        occurred_at: { type: string, format: date-time }
+    TalkerEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [role, data]
+          properties:
+            role: { const: talker }
+            data:
+              oneOf:
+                - $ref: '#/components/schemas/PublicMessage'
+                - $ref: '#/components/schemas/TalkerQuestion'
+                - $ref: '#/components/schemas/TalkerAnswer'
+                - $ref: '#/components/schemas/AudioPublicView'
+    HinterEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventBase'
+        - type: object
+          required: [role, data]
+          properties:
+            role: { const: hinter }
+            data:
+              oneOf:
+                - $ref: '#/components/schemas/HinterMessage'
+                - $ref: '#/components/schemas/HinterQuestion'
+                - $ref: '#/components/schemas/HinterReviewView'
+                - $ref: '#/components/schemas/HinterAnswer'
+                - $ref: '#/components/schemas/AudioPublicView'
+    RoleProjectedEvent:
+      oneOf:
+        - $ref: '#/components/schemas/TalkerEvent'
+        - $ref: '#/components/schemas/HinterEvent'
+      discriminator:
+        propertyName: role
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlation_id]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        code:
+          type: string
+          enum: [FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, IDEMPOTENCY_CONFLICT, REVIEW_REQUIRED, GENERATION_ACTIVE, INVALID_STATE, VALIDATION_FAILED, PROVIDER_UNAVAILABLE]
+        detail: { type: [string, 'null'], description: 已按角色脱敏 }
+        correlation_id: { type: string }
+    ResyncProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [snapshot_url, earliest_sequence]
+          properties:
+            snapshot_url: { type: string, format: uri-reference }
+            earliest_sequence: { type: integer, minimum: 1 }

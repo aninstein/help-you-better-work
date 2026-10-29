@@ -1,0 +1,44 @@
+{
+  "catalog": "catalog.json",
+  "suite_count": 24,
+  "atomic_case_count": 120,
+  "memory_chain_count": 24,
+  "evidence_case_count": 17,
+  "modes": {
+    "direct": 24,
+    "hinter_block": 24,
+    "hinter_hint": 24,
+    "multi_question": 24,
+    "rapid_burst": 24
+  },
+  "domains": {
+    "上市公司财报": 1,
+    "公司内部应用": 1,
+    "公开披露信息": 1,
+    "医院前台": 2,
+    "在线信息查询": 1,
+    "学习上课": 2,
+    "差旅": 3,
+    "通用客服": 5,
+    "酒店": 2,
+    "金融客服": 2,
+    "项目会议": 4
+  },
+  "feedback_regressions": {
+    "catalog": "regressions/user-feedback.json",
+    "case_count": 39,
+    "groups": {
+      "hinter": 4,
+      "prohibition": 12,
+      "reply_lifecycle": 2,
+      "routing": 8,
+      "tool_extensions": 3,
+      "transcript": 4,
+      "web_evidence": 6
+    },
+    "unique_test_functions": 64,
+    "live_acceptance_steps": 7
+  },
+  "status": "passed",
+  "errors": []
+}

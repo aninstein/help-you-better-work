@@ -1,0 +1,15 @@
+services:
+  agent-worker:
+    depends_on: !override
+      mysql: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      bootstrap-admin: {condition: service_completed_successfully}
+  projection-worker:
+    depends_on: !override
+      mysql: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+      bootstrap-admin: {condition: service_completed_successfully}
+  ollama:
+    profiles: [local-model]
+  model-init:
+    profiles: [local-model]

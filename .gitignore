@@ -1,0 +1,37 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.runtime/
+backend/data/
+agent-tools.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+
+# JavaScript
+node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Local logs, generated output, and editor files
+*.log
+outputs/
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

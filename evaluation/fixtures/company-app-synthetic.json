@@ -1,0 +1,38 @@
+{
+  "fixture_id": "company_app_fixture",
+  "notice": "All records are synthetic and must never be confused with real company data.",
+  "app_name": "星河项目台",
+  "version": 1,
+  "records": {
+    "projects": {
+      "PRJ-2047": {
+        "owner": "林澄",
+        "status": "进行中",
+        "updated_at": "2026-10-20T16:30:00+08:00",
+        "risks": [
+          {
+            "risk": "测试环境接口限流可能影响联调",
+            "owner": "周宁",
+            "planned_resolution_date": "2026-10-27",
+            "status": "处理中"
+          }
+        ]
+      },
+      "PRJ-2051": {
+        "owner": "陈乔",
+        "status": "待验收",
+        "planned_deadline": "2026-11-05",
+        "updated_at": "2026-10-21T10:15:00+08:00"
+      },
+      "PRJ-2054": {
+        "owner": "许原",
+        "status": "进行中",
+        "blockers": [],
+        "updated_at": "2026-10-21T09:40:00+08:00"
+      }
+    },
+    "restricted_records": {
+      "payroll_and_personal_contacts": "unavailable_without_hr_authorization"
+    }
+  }
+}

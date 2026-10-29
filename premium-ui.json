@@ -1,0 +1,9 @@
+{
+  "profile":"product-admin",
+  "sourceRoots":["frontend/src/employee","frontend/src/App.tsx"],
+  "locale":"zh-CN",
+  "canonicalMap":"UX-CONTRACT.md",
+  "requiredCapabilities":["Form","Scrollbar","Toast","CRUD"],
+  "commands":{"build":"pnpm --dir frontend build"},
+  "requiredCommands":["build"]
+}

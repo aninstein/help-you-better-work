@@ -1,0 +1,1749 @@
+{
+  "schema_version": "1.0",
+  "title": "用户反馈回归集：自动回答、工具、禁令和语音生命周期",
+  "language": "zh-CN",
+  "policy": "普通问题默认自动回答；公开数据先搜索；内部数据缺依据或命中明确人工确认规则才请求 Hinter；命中有效禁令时正常完成固定英文拒答。",
+  "verification": {
+    "deterministic": "pytest_nodes 关联已有确定性回归测试；使用合成数据、临时存储和模型/网络替身。通过只代表这些测试断言通过，不代表真实模型理解或外网可用性通过。",
+    "live": "live_acceptance_sequence 为另行实跑的验收协议；本文件不包含用户录音、令牌、会话 ID 或实时数值。manual_rubric 不参与确定性通过判定。",
+    "shared_tests": "多条场景可共享测试；执行器去重执行，报告每条场景关联的通过/失败/跳过数量，不将同一测试重复执行当覆盖增长。"
+  },
+  "groups": {
+    "routing": "自动回答、公开查询与内部数据分流",
+    "prohibition": "禁令范围、英文拒答与规则生效时机",
+    "transcript": "语音整理与有效信息保护",
+    "hinter": "人工事实补充、纠正与重试",
+    "web_evidence": "联网查询、来源正文与证据完整性",
+    "reply_lifecycle": "回复完成、音频预算与防刷屏",
+    "tool_extensions": "飞书文档、MCP 与本地文件工具"
+  },
+  "cases": [
+    {
+      "id": "ordinary-dau-definition",
+      "group": "routing",
+      "title": "DAU 定义直接回答",
+      "reported_failure": "所有问题都走人工或拒答，简单定义也无法回答。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What does DAU mean?"
+        }
+      ],
+      "expected": {
+        "decision": "answer / ordinary，无需 Hinter，也不强制联网。",
+        "answer": "解释 daily active users；非空且 completed，不能是查询承诺或失败提示。"
+      },
+      "pytest_nodes": [
+        "tests/test_public_metrics.py::test_metric_definition_is_answered_without_a_lookup"
+      ],
+      "manual_rubric": [
+        "实际模型也应识别为概念解释，而非实时数据查询。",
+        "同一会话刚发生过拒答或搜索失败时仍能正常回答。"
+      ]
+    },
+    {
+      "id": "public-shanghai-weather",
+      "group": "routing",
+      "title": "上海天气必须真实联网",
+      "reported_failure": "天气不调用工具；只说 Let me check that.，或声称不能搜索。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What's the weather in Shanghai today?"
+        }
+      ],
+      "expected": {
+        "decision": "lookup / public_lookup，不自动转人工。",
+        "tools": "实际执行 web_search 并获取支持当前天气的来源；只承诺查询不算完成。",
+        "answer": "引用地点、观测时间和来源；最终答案 completed，question answered。"
+      },
+      "pytest_nodes": [
+        "tests/test_live_tools.py::test_actual_chat_path_executes_lookup_and_projects_result",
+        "tests/test_routing_policy.py::test_invalid_search_keywords_recover_through_current_response_path",
+        "tests/test_input_refinement.py::test_future_search_promise_is_executed_before_final_answer"
+      ],
+      "manual_rubric": [
+        "实时值不设固定温度；必须与当次来源吻合。",
+        "完整播报结束前不能误报超时或反复创建补充回答。"
+      ]
+    },
+    {
+      "id": "public-tiktok-metrics",
+      "group": "routing",
+      "title": "TikTok 营收与活跃用户先查公开来源",
+      "reported_failure": "一遇到 DAU、营收等数据问题就转 Hinter；或把公开查询误判为禁答。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like to know TikTok's annual revenue, annual tax payments, and its daily and monthly active users. I'd like to know"
+        }
+      ],
+      "expected": {
+        "decision": "公开信息先 lookup，不因指标名称而 await_human。",
+        "answer": "有依据的指标先回答，逐项区分期间、单位与来源；未核实的税额或 DAU/MAU 明确缺失。",
+        "scope": "不得把区域收入、广告收入或广告触达人数冒充目标市场的全球总收入或活跃人数。"
+      },
+      "pytest_nodes": [
+        "tests/test_public_metrics.py::test_public_metric_names_cannot_trigger_human_approval",
+        "tests/test_contextual_replies.py::test_partial_public_evidence_keeps_the_missing_metric_warning"
+      ],
+      "manual_rubric": [
+        "实际模型须逐项保留问题意图，去掉尾部重复口语。",
+        "公开估计应标注为估计，不能声称是审计数字或内部核实。"
+      ]
+    },
+    {
+      "id": "internal-missing-evidence",
+      "group": "routing",
+      "title": "明确内部业务数据缺依据才请求 Hinter",
+      "reported_failure": "内部效率提升数据被拿去公开搜索，最后失败而没有请求补充。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "Wiki：Nimbus 是我们团队的内部试点，没有记录效率提升结果。"
+        },
+        {
+          "actor": "talker",
+          "text": "What efficiency improvement did our Nimbus pilot achieve?"
+        }
+      ],
+      "expected": {
+        "decision": "模型结合 Wiki、上下文判断 data_scope=internal；缺少依据时 await_human。",
+        "privacy": "不把内部项目或用户标识发送到公共搜索，不编造改善率。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_scope_is_model_metadata_not_a_product_name",
+        "tests/test_public_metrics.py::test_explicit_internal_data_never_leaks_through_a_public_query"
+      ],
+      "manual_rubric": [
+        "分别替换为 AICO、Nimbus、Orchid，不能依赖产品名称白名单或黑名单。",
+        "Hinter 请求应说明缺的是哪个项目、期间和指标依据。"
+      ]
+    },
+    {
+      "id": "internal-grounded-wiki",
+      "group": "routing",
+      "title": "Wiki 已有匹配事实时直接回答内部问题",
+      "reported_failure": "所有内部数据一律人工审核，已有 Wiki 依据也不用。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "Wiki 已核实记录：Nimbus 试点效率提升 30%。"
+        },
+        {
+          "actor": "talker",
+          "text": "What efficiency improvement did Nimbus achieve?"
+        }
+      ],
+      "expected": {
+        "decision": "匹配事实及原文引用成立时 answer，不重复请求 Hinter。",
+        "grounding": "声称 Wiki 已支持但引用不存在或数字不符，必须视为缺依据。"
+      },
+      "pytest_nodes": [
+        "tests/test_public_metrics.py::test_matching_internal_facts_can_still_answer_directly",
+        "tests/test_contextual_replies.py::test_claimed_wiki_evidence_must_quote_supplied_material"
+      ],
+      "manual_rubric": [
+        "上下文能确定项目身份，不等于提供了问题所求数值。",
+        "保留试点范围，不夸大为全公司效果。"
+      ]
+    },
+    {
+      "id": "contextual-scope-no-product-rule",
+      "group": "routing",
+      "title": "由模型语义确定数据范围",
+      "reported_failure": "为 AICO 写死规则；Wiki 只介绍项目身份却被当成已提供事实。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "同一效率问题分别配公开报告、内部试点或无法确定范围的 Wiki。"
+        },
+        {
+          "actor": "talker",
+          "text": "What efficiency improvement did Nimbus achieve?"
+        }
+      ],
+      "expected": {
+        "scope": "public -> lookup；internal 且缺依据 -> await_human；unknown -> clarify。",
+        "evidence": "项目身份背景不算效率数值的证据。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_scope_is_model_metadata_not_a_product_name",
+        "tests/test_contextual_replies.py::test_wiki_scope_context_does_not_count_as_the_requested_public_fact"
+      ],
+      "manual_rubric": [
+        "实际模型分别检查三种上下文，不只验证 policy 接收既定 metadata。",
+        "更换项目名后决策逻辑应一致。"
+      ]
+    },
+    {
+      "id": "explicit-human-rule",
+      "group": "routing",
+      "title": "明确人工确认规则优先于公开查询",
+      "reported_failure": "公开搜索策略覆盖了用户设置的人工确认规则。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "营收数字发布前必须先由我确认。"
+        },
+        {
+          "actor": "talker",
+          "text": "What is TikTok's revenue?"
+        }
+      ],
+      "expected": {
+        "decision": "匹配有效 require_human 规则时 await_human。",
+        "continuation": "批准后允许执行公开查询；不可把批准当成真实数值或覆盖后来生效的禁令。"
+      },
+      "pytest_nodes": [
+        "tests/test_public_metrics.py::test_operator_confirmation_rule_precedes_public_lookup",
+        "tests/test_public_metrics.py::test_confirmation_is_retained_when_public_search_runs_after_approval"
+      ],
+      "manual_rubric": [
+        "普通风格提示、模型自报 constraint_conflict 不应凭空创建审批要求。",
+        "只对匹配当前问题的有效规则生效。"
+      ]
+    },
+    {
+      "id": "mixed-public-internal",
+      "group": "routing",
+      "title": "复合问题分别分流",
+      "reported_failure": "同轮公开指标与内部业务问题被整体转人工或整体公开搜索。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "How much DAU of TikTok? I want to know how the efficiency improvement rate is affected by aico"
+        },
+        {
+          "actor": "system",
+          "text": "上下文明确 AICO 指内部试点，缺少改善率依据。"
+        }
+      ],
+      "expected": {
+        "public": "TikTok DAU 子题查询公开来源。",
+        "internal": "内部试点子题独立请求 Hinter，不泄露到公共搜索。"
+      },
+      "pytest_nodes": [
+        "tests/test_public_metrics.py::test_current_response_flow_splits_public_metric_and_internal_outcome"
+      ],
+      "manual_rubric": [
+        "检查每个子题的工具、状态、依据独立对应。",
+        "不能用其中一个子题的成功把其他子题标为已回答。"
+      ]
+    },
+    {
+      "id": "prohibition-visible-refusal",
+      "group": "prohibition",
+      "title": "命中禁令要完成英文拒答",
+      "reported_failure": "禁答显示回复未完成、空白或直接隐藏。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答 Lemon8 的任何问题。"
+        },
+        {
+          "actor": "talker",
+          "text": "I'd like to know what Lemon8's daily and monthly active users are."
+        }
+      ],
+      "expected": {
+        "answer_exact": "I don't know.",
+        "lifecycle": "decision block；可见回复 status completed、question answered，正常合成并发送音频，无 error。",
+        "tools": "不启动搜索、不继续澄清、不要求 Hinter 绕过禁令。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_live_call_prohibition_finishes_with_one_spoken_refusal",
+        "tests/test_reply_rejection.py::test_fixed_refusal_exception_cannot_publish_other_content"
+      ],
+      "manual_rubric": [
+        "固定英文拒答豁免只能发布这一句话，不能夹带受限事实或内部规则。",
+        "确认真实回放有非零有效 PCM 音频；模拟测试仅检查发送链路。"
+      ]
+    },
+    {
+      "id": "prohibition-before-asr-clarification",
+      "group": "prohibition",
+      "title": "实体轻微转写歧义不绕过广义禁令",
+      "reported_failure": "Lemon 8S 有转写歧义时先澄清或发失败，漏掉当前禁令。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答 Lemon8 的任何问题。"
+        },
+        {
+          "actor": "talker",
+          "text": "I'd like to know what LEMON 8S daily and monthly active users are"
+        }
+      ],
+      "expected": {
+        "decision": "语义命中当前有效禁令时 block，优先于 clarify、lookup 和 await_human。",
+        "answer_exact": "I don't know."
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_uncertain_transcription_still_checks_applicable_prohibition",
+        "tests/test_reply_rejection.py::test_active_prohibition_precedes_lookup_clarification_and_approval"
+      ],
+      "manual_rubric": [
+        "同时覆盖 now/next_turn 和 session/customer 范围。",
+        "仅身份已足以命中禁令时拒答，不能将所有 ASR 歧义都当成禁答。"
+      ]
+    },
+    {
+      "id": "next-turn-consistent-boundary",
+      "group": "prohibition",
+      "title": "仅后续生效在入站和发布阶段边界一致",
+      "reported_failure": "路由时没读到 next_turn 禁令，发布才拒绝，形成空卡片和失败。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "Explain the current pilot."
+        },
+        {
+          "actor": "hinter",
+          "text": "仅后续生效：不要讨论该试点。"
+        },
+        {
+          "actor": "talker",
+          "text": "What is the pilot adoption rate?"
+        }
+      ],
+      "expected": {
+        "boundary": "规则锚点前的消息不受新规则追溯影响；锚点后的消息在 question 创建前就能读到规则。",
+        "consistency": "message_id 入站快照与 question_id 发布快照一致，缓存不能混用无锚点结果。",
+        "answer": "后续命中问题发布一条 completed 英文拒答。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_next_turn_guidance_has_same_boundary_before_and_after_question_creation",
+        "tests/test_reply_rejection.py::test_live_call_prohibition_finishes_with_one_spoken_refusal"
+      ],
+      "manual_rubric": [
+        "相同客户新会话也检查 customer 规则，session 规则不可泄漏给其他会话。",
+        "不能只在 question 已创建后验证规则。"
+      ]
+    },
+    {
+      "id": "history-is-not-active-policy",
+      "group": "prohibition",
+      "title": "Wiki 历史记录不自动变成现行禁令",
+      "reported_failure": "历史拒答、旧提示或路由日志污染 Wiki 上下文，导致所有问题被禁止。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "Wiki 审计日志保留旧的拒答和“拒绝所有问题”提示；当前活动规则没有该提示。"
+        },
+        {
+          "actor": "talker",
+          "text": "What does DAU mean?"
+        }
+      ],
+      "expected": {
+        "context": "运行快照排除自动审计和会话日志的旧指令，保留真实 context.md 事实。",
+        "audit": "原有日志仍可读取，不通过删除历史解决误封禁。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_historical_hint_and_answer_logs_are_not_current_runtime_rules"
+      ],
+      "manual_rubric": [
+        "实际模型不能把旧 AI 拒答当成新的用户禁令。",
+        "检查已撤销或过期规则不会因历史文本重新生效。"
+      ]
+    },
+    {
+      "id": "semantic-prohibition-active-ids",
+      "group": "prohibition",
+      "title": "语义匹配且仅接受有效规则 ID",
+      "reported_failure": "只按产品名匹配，或接受模型幻造、撤销的规则 ID。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "Do not discuss Project Nimbus."
+        },
+        {
+          "actor": "system",
+          "text": "Wiki：our new project 指 Project Nimbus。"
+        },
+        {
+          "actor": "talker",
+          "text": "What's the adoption rate of our new project?"
+        }
+      ],
+      "expected": {
+        "matching": "利用当前问题和 Wiki 语义识别同一项目。",
+        "rule_ids": "只接受当前有效规则集合内的 ID；虚构或撤销的 ID 不得触发禁答。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_private_prohibition_gate_uses_model_semantics_and_active_rule_ids"
+      ],
+      "manual_rubric": [
+        "真实模型应识别代称，而非必须出现 Nimbus 字面量。",
+        "不能把别的产品或所有数值问题纳入该禁令。"
+      ]
+    },
+    {
+      "id": "unrelated-question-after-ban",
+      "group": "prohibition",
+      "title": "局部禁令不封禁正常问题",
+      "reported_failure": "禁止 Lemon8 后 TikTok 营收、上海天气和 DAU 定义也全部拒答。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答 Lemon8 的任何问题。"
+        },
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "talker",
+          "text": "What's the weather in Shanghai today?"
+        },
+        {
+          "actor": "talker",
+          "text": "What does DAU mean?"
+        }
+      ],
+      "expected": {
+        "scope": "三条正常问题不命中 Lemon8 禁令。",
+        "answers": "前两条按公开信息查询，定义题直接回答；不得固定拒答或显示回复未完成。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_publication_uses_answer_model_for_semantic_rule_scope",
+        "tests/test_public_metrics.py::test_metric_definition_is_answered_without_a_lookup",
+        "tests/test_prohibition_scope.py::test_negative_scope_review_cannot_be_overridden_by_routing",
+        "tests/test_prohibition_scope.py::test_mixed_requests_get_independent_scope_assessments",
+        "tests/test_prohibition_scope.py::test_unrelated_prohibition_does_not_remove_explicit_approval_or_safety",
+        "tests/test_prohibition_scope.py::test_scope_assessment_is_private_diagnostic",
+        "tests/test_prohibition_scope.py::test_publication_filters_only_unmatched_topic_rules",
+        "tests/test_prohibition_scope.py::test_failed_refusal_and_control_messages_are_not_new_answer_templates"
+      ],
+      "manual_rubric": [
+        "必须真实模型按同一会话顺序回放，不能仅靠模拟模型返回 approved=true 判定语义通过。",
+        "见 live_acceptance_sequence，三个正常问题都必须完成文本与音频。"
+      ]
+    },
+    {
+      "id": "old-approval-cannot-override-ban",
+      "group": "prohibition",
+      "title": "旧人工批准不能覆盖新禁令",
+      "reported_failure": "人工确认后无视后来设置的禁答，或再次启动查询。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "旧问题正在等待人工确认。"
+        },
+        {
+          "actor": "hinter",
+          "text": "现在起禁止讨论这个项目。"
+        },
+        {
+          "actor": "hinter",
+          "text": "确认旧问题。"
+        }
+      ],
+      "expected": {
+        "precedence": "重读当前规则，新禁令优先。",
+        "answer": "一条 completed 英文拒答，不发旧候选内容，不启动搜索。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_confirming_an_old_manual_rule_cannot_override_a_new_prohibition"
+      ],
+      "manual_rubric": [
+        "用户提供数值也不自动撤销独立 prohibition 规则。",
+        "固定拒答不能泄露规则原文。"
+      ]
+    },
+    {
+      "id": "speech-cleanup-before-routing",
+      "group": "transcript",
+      "title": "高置信转写也清理口头禅与重复",
+      "reported_failure": "高置信 ASR 跳过整理；嗯嗯、重复词和尾部重复仍进入路由。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "OK, um, what's the weather in Shanghai?"
+        },
+        {
+          "actor": "talker",
+          "text": "嗯嗯，帮我帮我调用web search查询上海的天气"
+        }
+      ],
+      "expected": {
+        "refinement": "语义整理保留上海天气主意图，删除无信息口头禅和重复；保留 original_text 便于回看。",
+        "routing": "每条输入仅整理一次，下游路由与查询使用有效文本。"
+      },
+      "pytest_nodes": [
+        "tests/test_input_refinement.py::test_high_quality_asr_still_gets_semantic_cleanup",
+        "tests/test_input_refinement.py::test_actual_response_path_routes_effective_input_once"
+      ],
+      "manual_rubric": [
+        "真实模型补测尾部重复 I would like to know，不删除营收、税额、DAU、MAU 等有效项。",
+        "不能因置信度高而跳过语义整理，也不把重试作为再次清洗。"
+      ]
+    },
+    {
+      "id": "speech-clarify-city-not-filler",
+      "group": "transcript",
+      "title": "只澄清缺失城市，不追问 MURM",
+      "reported_failure": "把无信息 MURM 当成核心疑问，反问 What did you mean by MURM?。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "No, no. Murm. I no. I, I say, what's the waiter in some ha?"
+        }
+      ],
+      "expected": {
+        "refinement": "删除无意义前缀，把 waiter 按天气上下文纠正；城市听不清时保留歧义。",
+        "clarification": "只问 Which city would you like the weather for?，不得凭空确定上海。"
+      },
+      "pytest_nodes": [
+        "tests/test_input_refinement.py::test_noisy_preface_removed_without_guessing_city",
+        "tests/test_input_refinement.py::test_clarification_targets_missing_city_not_filler",
+        "tests/test_input_refinement.py::test_clean_final_asr_does_not_turn_false_starts_into_prohibition"
+      ],
+      "manual_rubric": [
+        "最终 ASR 若明确 Shanghai，可以据此纠正；没有依据时不可猜测。",
+        "前缀自我修正中的 No 不应被当成禁止查询的规则。"
+      ]
+    },
+    {
+      "id": "speech-protect-negation-identifiers",
+      "group": "transcript",
+      "title": "清洗不删除真实否定或改动标识",
+      "reported_failure": "去重复时丢失禁止语义，或擅自更改用户 ID。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "DO NOT, DO NOT QUERY USER ID A7B9"
+        },
+        {
+          "actor": "talker",
+          "text": "No, thanks."
+        }
+      ],
+      "expected": {
+        "preserve": "重复可合并，但 Do not、A7B9 和 No thanks 的拒绝语义必须保留。",
+        "conflict": "模型改成肯定请求或 A7B8 时触发 protected_conflict 并保留原文。"
+      },
+      "pytest_nodes": [
+        "tests/test_input_refinement.py::test_disputed_negation_and_identifier_remain_protected",
+        "tests/test_input_refinement.py::test_repeated_prohibition_is_deduplicated_but_not_deleted",
+        "tests/test_input_refinement.py::test_refusal_is_not_discarded_as_filler"
+      ],
+      "manual_rubric": [
+        "同时检查数字、时间、实体、否定等有效信息。",
+        "去口头禅不应变成任意改写用户意图。"
+      ]
+    },
+    {
+      "id": "speech-filler-only-no-question",
+      "group": "transcript",
+      "title": "纯口头禅不创建问题",
+      "reported_failure": "空信息输入也触发路由、人工审批或重复答复。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "Um, uh, hmm."
+        }
+      ],
+      "expected": {
+        "questions": "无有效内容时不创建问题或回复。",
+        "calls": "不调用问题路由，不搜索，不要求 Hinter。"
+      },
+      "pytest_nodes": [
+        "tests/test_input_refinement.py::test_only_filler_does_not_create_a_question"
+      ],
+      "manual_rubric": [
+        "这是无有效请求，与命中禁令的可见拒答行为不同。",
+        "原始录音或转写审计可保留。"
+      ]
+    },
+    {
+      "id": "hinter-facts-after-search-failure",
+      "group": "hinter",
+      "title": "匹配的已核实事实替换失败搜索",
+      "reported_failure": "Hinter 已补充事实，仍重复 The web search did not return verifiable source content.。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "system",
+          "text": "搜索提供者失败。"
+        },
+        {
+          "actor": "hinter",
+          "text": "TikTok年度营收为120亿美元，统计年度是2025年，已核实。（仅合成测试事实）"
+        }
+      ],
+      "expected": {
+        "binding": "授权事实绑定当前问题，retrieval_mode=provided；不重新强制搜索。",
+        "answer": "回答合成测试提供的 2025 年 120 亿美元，completed；不能重复过期搜索错误。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_full_call_hint_is_bound_to_the_active_question",
+        "tests/test_contextual_replies.py::test_hinter_fact_replaces_failed_search_or_explains_metric_gap"
+      ],
+      "manual_rubric": [
+        "这里的数字为测试夹具，不作为真实 TikTok 营收基准。",
+        "真实回放还应对 DAU/MAU 题补充对应已核实人数并检查单位换算。"
+      ]
+    },
+    {
+      "id": "hinter-wrong-metric-gap",
+      "group": "hinter",
+      "title": "人数不能当作营收依据",
+      "reported_failure": "Hinter 提供 DAU/MAU 后，系统要么硬报营收，要么机械重复搜索错误。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "system",
+          "text": "公开搜索失败。"
+        },
+        {
+          "actor": "hinter",
+          "text": "DAU是1.2亿，MAU是23亿"
+        }
+      ],
+      "expected": {
+        "answer": "明确所给是用户数，尚缺营收；不把人数写成金额，不假称问题已解决。",
+        "stale_error": "使用新提示解释指标缺口，不重复过期 web search 错误或无限重试。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_hinter_fact_replaces_failed_search_or_explains_metric_gap"
+      ],
+      "manual_rubric": [
+        "当前题若为人数则可使用同一提示；必须以绑定的问题为准。",
+        "用户数、收入、税额与报告期间分别核对。"
+      ]
+    },
+    {
+      "id": "hinter-cancels-old-search",
+      "group": "hinter",
+      "title": "纠正后取消过期查询",
+      "reported_failure": "新事实与旧搜索并行完成，旧错误覆盖纠正答案或反复补发。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "system",
+          "text": "公开查询仍在执行。"
+        },
+        {
+          "actor": "hinter",
+          "text": "提供当前问题的已核实年度营收和期间。（合成测试夹具）"
+        }
+      ],
+      "expected": {
+        "cancellation": "先取消旧查询，再依据提供的匹配事实重答。",
+        "result": "最终新答案 answered；旧失败不得追加或覆盖新回复。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_correction_cancels_inflight_lookup_before_using_new_facts"
+      ],
+      "manual_rubric": [
+        "需控制时序，让旧查询真的处于 in flight。",
+        "风格提示不能被误当成已核实事实。"
+      ]
+    },
+    {
+      "id": "retry-original-intent",
+      "group": "hinter",
+      "title": "Try again 沿用原问题",
+      "reported_failure": "把 Try again 创建为新查询，丢掉上个问题实体与指标。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "system",
+          "text": "首次搜索失败。"
+        },
+        {
+          "actor": "talker",
+          "text": "Try again."
+        }
+      ],
+      "expected": {
+        "identity": "复用原 question_id，不创建无关的新问题。",
+        "query": "重试原始指标问题；不得把 Try again 当搜索关键词。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_try_again_reuses_the_original_question_and_query"
+      ],
+      "manual_rubric": [
+        "只有用户发起的重试或受限查询改写；不能形成无界自动重试。",
+        "真实复测检查第二次结果仍属于原实体和指标。"
+      ]
+    },
+    {
+      "id": "search-provider-rss",
+      "group": "web_evidence",
+      "title": "Bing 网页与新闻结果能正常返回",
+      "reported_failure": "搜索重定向或 RSS 参数不兼容导致拿不到结果。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "Search for TikTok's annual revenue."
+        },
+        {
+          "actor": "system",
+          "text": "提供网页 RSS 与新闻 RSS 响应夹具。"
+        }
+      ],
+      "expected": {
+        "request": "使用兼容的 RSS 请求，新闻 format=RSS；不强制会导致重定向循环的市场参数。",
+        "results": "合并网页和新闻，按相关性排序后截断，不能过早丢失支持页面。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_bing_merges_news_and_ranks_before_truncating"
+      ],
+      "manual_rubric": [
+        "夹具测试只保证请求构造和解析，真实提供者可达性仍需联网实测。",
+        "错误需区分传输失败、无结果与缺少可验证正文。"
+      ]
+    },
+    {
+      "id": "weather-source-freshness",
+      "group": "web_evidence",
+      "title": "当前天气不接受气候常识或旧观测",
+      "reported_failure": "搜索只找到城市百科或旧气候信息，也据此回答当天温度。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What's the weather in Shanghai today?"
+        },
+        {
+          "actor": "system",
+          "text": "分别提供当前天气 JSON、24 小时前观测和年度气候页面。"
+        }
+      ],
+      "expected": {
+        "freshness": "当前观测在有效时间窗内才可使用；过期数据或年度气候不能支持当前天气。",
+        "evidence": "地点、时区、观测时间与数值有来源；不将百科历史天气当实时观测。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_weather_requires_fresh_source_even_if_model_accepts_a_climate_page"
+      ],
+      "manual_rubric": [
+        "联网验收不固定城市温度；核对本次来源的地点和时间。",
+        "模型声称 answer_supported=true 也不能越过服务端新鲜度检查。"
+      ]
+    },
+    {
+      "id": "public-partial-evidence",
+      "group": "web_evidence",
+      "title": "部分公开证据保留口径与缺项",
+      "reported_failure": "只找到广告收入就冒充总收入，或因缺一个指标把全部证据丢弃。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "Nimbus annual revenue and tax payments"
+        },
+        {
+          "actor": "system",
+          "text": "合成公开页面：Nimbus advertising revenue was estimated at 12 billion in 2025."
+        }
+      ],
+      "expected": {
+        "coverage": "coverage=partial；保留广告收入、估计、年度限定。",
+        "missing": "总收入与税额未核实，单独明确缺项，不编造补齐。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_partial_public_evidence_keeps_the_missing_metric_warning"
+      ],
+      "manual_rubric": [
+        "区域数据不可直接推为全球，母公司数据不可直接推为子产品。",
+        "DAU、MAU、注册用户和广告触达分别核对。"
+      ]
+    },
+    {
+      "id": "public-evidence-exact-quote",
+      "group": "web_evidence",
+      "title": "证据引用必须存在于抓取正文",
+      "reported_failure": "模型幻造 quote 或来源 URL，也被标为已核实。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "合成页面实际写 12 billion；模型分别引用 12 billion 和 30 billion。"
+        },
+        {
+          "actor": "talker",
+          "text": "What is the reported revenue?"
+        }
+      ],
+      "expected": {
+        "quotes": "只接受提供过的 URL 与正文实际存在的引用。",
+        "unsupported": "数字被改写或无对应原文时不得标 answer_supported。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_public_evidence_extraction_requires_an_actual_source_quote"
+      ],
+      "manual_rubric": [
+        "URL、期间和指标口径与引用内容共同核对。",
+        "只有搜索命中页面不等于已获得答案证据。"
+      ]
+    },
+    {
+      "id": "search-waits-for-supporting-page",
+      "group": "web_evidence",
+      "title": "导航页不能抢先终止有效报告读取",
+      "reported_failure": "快速返回登录页就判断全部无内容，遗漏稍后返回的报告正文。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What is TikTok's annual revenue?"
+        },
+        {
+          "actor": "system",
+          "text": "搜索返回登录页、导航页与稍慢的合成报告页。"
+        }
+      ],
+      "expected": {
+        "fetch": "受限预算内等待候选正文，不因导航页更快而提前取消支持报告。",
+        "sources": "最终 evidence 来源包含支持报告，不能把登录页当依据。"
+      },
+      "pytest_nodes": [
+        "tests/test_contextual_replies.py::test_fast_navigation_pages_do_not_cancel_a_supporting_report",
+        "tests/test_contextual_replies.py::test_long_page_retains_metric_evidence_beyond_navigation"
+      ],
+      "manual_rubric": [
+        "长正文聚焦后仍保留指标段落。",
+        "来源错误与无依据要可追踪，不发重复控制卡片。"
+      ]
+    },
+    {
+      "id": "completed-search-not-repeated",
+      "group": "web_evidence",
+      "title": "已有查询结果不重新开启工具循环",
+      "reported_failure": "lookup 已完成但 use_tools=true 导致又重复查一遍，最终超时。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "当前问题 web_search 已完成，tool_evidence 存在。"
+        },
+        {
+          "actor": "talker",
+          "text": "请给出刚才查到的结果。"
+        }
+      ],
+      "expected": {
+        "tools": "将已完成证据交给答复模型，不仅因 use_tools 标志再次 bind_tools。",
+        "answer": "使用当前问题的证据完成回答，无重复网络工作。",
+        "empty_answer": "工具已完成但模型返回空文本时，仅重试一次答案生成，不重复查工具、不发空答案。"
+      },
+      "pytest_nodes": [
+        "tests/test_agent_tools.py::test_completed_public_lookup_answers_without_starting_another_tool_loop",
+        "tests/test_prohibition_scope.py::test_empty_completed_tool_answer_retries_generation_once_without_repeating_tool"
+      ],
+      "manual_rubric": [
+        "后续真正不同问题仍可以启用新工具。",
+        "不能通过停用所有工具来修复重复调用。"
+      ]
+    },
+    {
+      "id": "reply-no-empty-flood",
+      "group": "reply_lifecycle",
+      "title": "失败或禁答不刷空白回复",
+      "reported_failure": "同一问题不断出现正在组织答案、回复未完成和补充回答卡片。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "模拟 ACK、进度消息被当前规则拒绝，或路由解析失败。"
+        },
+        {
+          "actor": "talker",
+          "text": "重试当前问题两次。"
+        }
+      ],
+      "expected": {
+        "projection": "不持久化被拒绝的空 ACK；同一版本空失败有界合并，重试不不断追加空卡片。",
+        "history": "已经真正发送的内容和原始审计保留；禁答由完整可见英文拒答结束。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_empty_failure_projection_keeps_one_and_preserves_sent_content",
+        "tests/test_reply_rejection.py::test_rejected_acknowledgements_do_not_create_persistent_error_cards",
+        "tests/test_reply_rejection.py::test_retry_routing_failure_does_not_append_more_empty_replies",
+        "tests/test_reply_rejection.py::test_route_json_recovers_once_without_public_speech",
+        "tests/test_reply_rejection.py::test_new_prohibition_cancels_preparing_search_without_error_replies"
+      ],
+      "manual_rubric": [
+        "真实连续回放中观察时间线，不能只看最终数据库状态。",
+        "不把正常拒答标成失败，也不靠隐藏已发内容掩盖问题。"
+      ]
+    },
+    {
+      "id": "audio-budget-after-generation",
+      "group": "reply_lifecycle",
+      "title": "生成完成后慢速播报不触发生成超时",
+      "reported_failure": "长回答已经生成，排队播放却被同一 deadline 截断，显示回复未完成。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "路由/搜索预算接近耗尽；回答已准备，分段音频有节奏发送。"
+        },
+        {
+          "actor": "talker",
+          "text": "Explain the metric."
+        }
+      ],
+      "expected": {
+        "budget": "语义验证、已准备内容发布与 TTS 准备分别使用适当预算，音频排队不消耗模型生成期限。",
+        "completion": "完整文本与所有分段音频发送后 status completed、question answered，无伪超时。"
+      },
+      "pytest_nodes": [
+        "tests/test_reply_rejection.py::test_ready_answer_survives_slow_publication_and_gets_its_own_tts_budget"
+      ],
+      "manual_rubric": [
+        "真实回放检查非零有效 PCM、最终音频归档与错误事件。",
+        "记录首个有效答案时间与全文音频完成时间；不能混为模型首字延迟。"
+      ]
+    },
+    {
+      "id": "lark-document-tool-routing",
+      "group": "tool_extensions",
+      "title": "飞书文档走 lark-doc，认证错误不能伪装正文",
+      "reported_failure": "发送文档链接未读取；或 CLI 退出码 0 的授权提示被当正文。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "请读取 https://docs.example.com/docx/SyntheticDocumentToken 并总结。"
+        },
+        {
+          "actor": "system",
+          "text": "使用本地 CLI 夹具，分别返回正文与认证失败；不访问真实文档。"
+        }
+      ],
+      "expected": {
+        "tool": "按 /docx/、/wiki/ 路径路由 lark-doc；私有文档链接不得泄露到公共搜索。",
+        "result": "读取正文后总结；认证错误保留明确原因，不冒充已读取。"
+      },
+      "pytest_nodes": [
+        "tests/test_agent_tools.py::test_skills_and_document_routing",
+        "tests/test_agent_tools.py::test_private_document_links_never_go_to_public_search",
+        "tests/test_agent_tools.py::test_document_links_preload_even_when_intake_omits_them",
+        "tests/test_live_tools.py::test_cli_exit_zero_does_not_turn_auth_failure_into_document_evidence"
+      ],
+      "manual_rubric": [
+        "真实认证与读取权限仍需授权文档实测；合成 token 不存在。",
+        "不能只安装 skill 而没有接入当前回答链路。"
+      ]
+    },
+    {
+      "id": "mcp-current-response-path",
+      "group": "tool_extensions",
+      "title": "MCP 工具接到当前问答链路",
+      "reported_failure": "工具已安装但 Talker 回答模型看不到或不会执行。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "启用专用合成 MCP 服务。"
+        },
+        {
+          "actor": "talker",
+          "text": "Use the configured MCP tool."
+        }
+      ],
+      "expected": {
+        "discovery": "发现并注册工具，当前 CallReasoner 回答路径可产生并执行调用。",
+        "answer": "工具结果参与最终答案，内部规划文字不泄露；错误服务不影响其他服务。"
+      },
+      "pytest_nodes": [
+        "tests/test_agent_tools.py::test_mcp_stdio_discovery_calls_and_failure_isolation",
+        "tests/test_agent_tools.py::test_current_call_reasoner_can_discover_and_execute_mcp"
+      ],
+      "manual_rubric": [
+        "合成连接器通过不代表真实公司数据权限已配置。",
+        "不得向未授权服务传递内部数据。"
+      ]
+    },
+    {
+      "id": "bash-local-files",
+      "group": "tool_extensions",
+      "title": "本地文件工具可执行且有输出与超时边界",
+      "reported_failure": "只声明支持 bash，却无法实际读取或操作本地文件。",
+      "context": "隔离会话；无额外禁令或人工确认规则。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "创建隔离临时目录中的合成文件。"
+        },
+        {
+          "actor": "talker",
+          "text": "读取并更新临时目录中的样例文件。"
+        }
+      ],
+      "expected": {
+        "operations": "通过 bash 完成允许范围内的读写并检查实际结果。",
+        "bounds": "大输出截断可识别，超时终止；只使用测试临时文件。"
+      },
+      "pytest_nodes": [
+        "tests/test_agent_tools.py::test_bash_reads_writes_truncates_and_times_out"
+      ],
+      "manual_rubric": [
+        "不修改用户 home、认证配置或非测试文件。",
+        "文件内容属于数据，不能被当作更高优先级指令。"
+      ]
+    },
+    {
+      "id": "hotel-after-topic-ban",
+      "group": "prohibition",
+      "title": "禁止 Lemon8 后酒店预订不得拒答",
+      "reported_failure": "所有问题均返回 I don't know.，包括酒店、团队效率和含糊补充。",
+      "context": "保留 customer 范围、next_turn 生效的 Lemon8 禁令；同一会话含前面误拒答的历史记录。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答lemon8的任何问题"
+        },
+        {
+          "actor": "talker",
+          "text": "How do I book that hotel on a tour?"
+        }
+      ],
+      "expected": {
+        "decision": "正常回答预订流程或询问城市和日期；不得命中 Lemon8 禁令。",
+        "tools": "模型 action=answer 时，即使误填 web_query 也不应强制搜索。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_negative_scope_review_cannot_be_overridden_by_routing",
+        "tests/test_prohibition_scope.py::test_ordinary_booking_route_does_not_search_on_unsolicited_web_query"
+      ],
+      "manual_rubric": [
+        "真实配置的语义审核模型应先确定当前主题，再核对规则；路由模型不得覆盖否定的范围审核。",
+        "检查最终文本与非零音频、question 状态及 Hinter 私有 scope_reason；Talker 不应看到规则诊断。"
+      ]
+    },
+    {
+      "id": "efficiency-after-topic-ban",
+      "group": "prohibition",
+      "title": "内部效率问题不得被无关产品禁令覆盖",
+      "reported_failure": "所有问题均返回 I don't know.，包括酒店、团队效率和含糊补充。",
+      "context": "保留 customer 范围、next_turn 生效的 Lemon8 禁令；同一会话含前面误拒答的历史记录。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答lemon8的任何问题"
+        },
+        {
+          "actor": "talker",
+          "text": "I'd like to know how much ego has improved the teams efficiency and how much it has saved in p d man hours"
+        }
+      ],
+      "expected": {
+        "decision": "依据当前问题与 Wiki 判断；缺内部事实时 Hinter，实体/范围不明时澄清。",
+        "prohibition": "不能把 ego 擅自视为 Lemon8 的别名，不能因是数值问题固定拒答。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_negative_scope_review_cannot_be_overridden_by_routing"
+      ],
+      "manual_rubric": [
+        "真实配置的语义审核模型应先确定当前主题，再核对规则；路由模型不得覆盖否定的范围审核。",
+        "检查最终文本与非零音频、question 状态及 Hinter 私有 scope_reason；Talker 不应看到规则诊断。"
+      ]
+    },
+    {
+      "id": "fragment-after-topic-ban",
+      "group": "prohibition",
+      "title": "含糊的 And that much 不继承无关拒答",
+      "reported_failure": "所有问题均返回 I don't know.，包括酒店、团队效率和含糊补充。",
+      "context": "保留 customer 范围、next_turn 生效的 Lemon8 禁令；同一会话含前面误拒答的历史记录。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答lemon8的任何问题"
+        },
+        {
+          "actor": "talker",
+          "text": "And that much."
+        }
+      ],
+      "expected": {
+        "decision": "结合真实前文识别补充；无法理解时问一个具体澄清问题。",
+        "prohibition": "过去连续拒答不构成当前适用性证据；不得未经判断继承规则 ID。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_negative_scope_review_cannot_be_overridden_by_routing"
+      ],
+      "manual_rubric": [
+        "真实配置的语义审核模型应先确定当前主题，再核对规则；路由模型不得覆盖否定的范围审核。",
+        "检查最终文本与非零音频、question 状态及 Hinter 私有 scope_reason；Talker 不应看到规则诊断。"
+      ]
+    },
+    {
+      "id": "publication-scope-not-global-veto",
+      "group": "prohibition",
+      "title": "发布阶段不能重新扩大无关禁令",
+      "reported_failure": "入口已判定 TikTok/酒店不受 Lemon8 禁令限制，发布仍以禁止 Lemon8 为由拒绝；后续模型又照抄旧失败提示。",
+      "context": "同一客户的 Lemon8 禁令持续有效；会话包含以前的拒答、搜索错误、半截回答和正常完整回答。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答lemon8的任何问题"
+        },
+        {
+          "actor": "talker",
+          "text": "Based on the search, I found conflicting revenue figures for TikTok."
+        }
+      ],
+      "expected": {
+        "publication": "当前问题和候选内容均不涉及受限主题时，不将该主题禁令传给通用发布校验。",
+        "boundary": "候选内容额外引入受禁主题时仍应阻断；其他 instruction、require_human 和未结构化约束保留。",
+        "generation": "生成阶段只应用已判定相关的主题禁令；发布阶段仍按实际候选内容检查全部禁令，不能关闭出站检查。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_publication_filters_only_unmatched_topic_rules",
+        "tests/test_prohibition_scope.py::test_generation_does_not_receive_an_unrelated_topic_ban"
+      ],
+      "manual_rubric": [
+        "实际模型连续回放原问题，不能只看路由 action；核对最终文本、发布状态和非零音频。",
+        "诊断只对 Hinter 可见，不隐藏原有已发送内容，也不通过关闭所有禁令来恢复正常题。"
+      ]
+    },
+    {
+      "id": "failed-history-not-new-answer-template",
+      "group": "prohibition",
+      "title": "历史拒答和失败提示不成为新问题的回答模板",
+      "reported_failure": "入口已判定 TikTok/酒店不受 Lemon8 禁令限制，发布仍以禁止 Lemon8 为由拒绝；后续模型又照抄旧失败提示。",
+      "context": "同一客户的 Lemon8 禁令持续有效；会话包含以前的拒答、搜索错误、半截回答和正常完整回答。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "不准回答lemon8的任何问题"
+        },
+        {
+          "actor": "talker",
+          "text": "How do I book that hotel on a tour?"
+        }
+      ],
+      "expected": {
+        "history": "旧固定拒答、错误、中断与进度消息不作为助手回答示例进入当前上下文；原始界面审计仍保留。",
+        "answer": "给实际预订步骤或问明确酒店/城市/日期，不照抄旧的 I cannot confirm / try again 模板。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_failed_refusal_and_control_messages_are_not_new_answer_templates"
+      ],
+      "manual_rubric": [
+        "实际模型连续回放原问题，不能只看路由 action；核对最终文本、发布状态和非零音频。",
+        "诊断只对 Hinter 可见，不隐藏原有已发送内容，也不通过关闭所有禁令来恢复正常题。"
+      ]
+    },
+    {
+      "id": "freeform-topic-ban-default-kind",
+      "group": "prohibition",
+      "title": "自然语言禁令不依赖手动选择类型",
+      "reported_failure": "Hinter 输入禁止回答Lemon八的所有问题被当成 instruction，路由搜索但发布拦截，产生空失败。",
+      "context": "新 Talker；默认提示入口不传 kind；兼容历史误分类记录，保留作用域。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "禁止回答Lemon八的所有问题"
+        },
+        {
+          "actor": "talker",
+          "text": "I'd like to know what Lemon 8s daily and monthly active users are"
+        },
+        {
+          "actor": "talker",
+          "text": "What does DAU mean?"
+        }
+      ],
+      "expected": {
+        "ban": "命中禁令的主题正常完成 I don't know.；不能搜索后失败。",
+        "control": "非禁令主题正常回答，不能继承上一题拒答。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_default_hint_and_saved_instruction_share_prohibition_type"
+      ],
+      "manual_rubric": [
+        "默认提示入口无需手动填写 prohibition。",
+        "原会话已保存的提示在服务重启后也按同一类型判断。"
+      ]
+    },
+    {
+      "id": "terminal-unknown-replaces-error",
+      "group": "reply_lifecycle",
+      "title": "无法完成回答时返回固定未知结果",
+      "reported_failure": "回答被拦截或模型失败，显示回复未完成并不断创建失败卡片。",
+      "context": "普通回答生成异常，或发布检查拒绝；不主动重试、不转人工。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "Explain this topic."
+        },
+        {
+          "actor": "system",
+          "text": "本次模型生成异常或发布检查拒绝实质回答。"
+        }
+      ],
+      "expected": {
+        "answer": "同一回答正常完成 I don't know.，不显示回复未完成。",
+        "diagnostics": "后台保留失败原因；用户主动停止和撤回不能触发新回复。"
+      },
+      "pytest_nodes": [
+        "tests/test_prohibition_scope.py::test_generation_failure_completes_unknown_without_model_approval"
+      ],
+      "manual_rubric": [
+        "固定未知回复能正常播报。",
+        "正常问题仍返回实质回答，不能全部变成未知。"
+      ]
+    },
+    {
+      "id": "wiki-current-facts-over-old-ai-status",
+      "group": "hinter",
+      "title": "当前人工数据优先于旧回答的不确定描述",
+      "reported_failure": "补充 TikTok 数据后仍引用旧 AI 未核实提示，再次搜索失败返回未知。",
+      "context": "Wiki/Hint 含人工补充；上下文包含旧 AI 回答和搜索失败。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "TikTok日活是1.2亿人次，月活是23亿人；年度收入统计口径待确认。"
+        },
+        {
+          "actor": "talker",
+          "text": "I'd like to know TikTok's revenue, annual tax payments, and daily and monthly users."
+        }
+      ],
+      "expected": {
+        "answer": "保留当前日活/月活，同时搜索缺失的公开营收和税额；搜索失败也不能丢弃已有事实。",
+        "source": "引用必须出自实际 Wiki/Hint 正文；旧 AI 回答、失败状态和绑定上下文不能充当证据。",
+        "verification": "已完整匹配的人工事实可直接回答；部分匹配不能跳过缺失公开数据的搜索，不能把人工值声称为官方披露。"
+      },
+      "pytest_nodes": [
+        "tests/test_wiki_recall.py::test_old_ai_quote_in_guidance_context_is_not_supplied_evidence",
+        "tests/test_wiki_recall.py::test_partial_human_values_preserve_facts_and_search_missing_public_data",
+        "tests/test_wiki_recall.py::test_partial_wiki_recall_reaches_generation_context",
+        "tests/test_wiki_recall.py::test_explicit_public_verification_still_searches_supplied_data"
+      ],
+      "manual_rubric": [
+        "新会话和原会话的自由文本 Hint 都可提供事实，不要求手选类型。",
+        "年收益率、年收入、PD 和人次不能悄悄换成其他指标。"
+      ]
+    },
+    {
+      "id": "wiki-topic-beyond-first-twenty",
+      "group": "routing",
+      "title": "Wiki 文档先检索相关性再截断",
+      "reported_failure": "Wiki 只取按文件名排序的前20篇，后面的主题无法召回。",
+      "context": "同一用户 Wiki 超过20篇；目标事实位于靠后主题文档。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "Wiki 的 z-nimbus.md 记载 Nimbus throughput improved by 30%。"
+        },
+        {
+          "actor": "talker",
+          "text": "What improvement did the Nimbus pilot achieve?"
+        }
+      ],
+      "expected": {
+        "recall": "在整个有效 Wiki 中排序后选择文档，目标事实进入上下文。",
+        "isolation": "不混入其他 Talker、撤销提示或会话原始记录。"
+      },
+      "pytest_nodes": [
+        "tests/test_wiki_recall.py::test_topic_after_twentieth_document_is_recalled"
+      ],
+      "manual_rubric": [
+        "目标文档改名或新增其他文档不能让它消失。",
+        "提示上下文预算有限，但不能先截断再检索。"
+      ]
+    },
+    {
+      "id": "automatic-answer-feeds-llm-wiki",
+      "group": "reply_lifecycle",
+      "title": "自动回答链路继续整理用户 Wiki",
+      "reported_failure": "自动回答只同步会话日志，没有执行旧链路的记忆整理；召回排除会话日志后新知识不可用。",
+      "context": "同一 Talker 的自动回答完成；语音回答需要实际播放确认。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "当前回答已完成并实际发出，内容是有来源和范围的实质结论。"
+        }
+      ],
+      "expected": {
+        "write": "后台调用现有 LLM Wiki 整理，保留主体、来源、时间、范围和不确定性；完成和播放确认去重。",
+        "skip": "I don't know.、禁答、进度、未播出、撤回和失败结果不能存为已知事实。"
+      },
+      "pytest_nodes": [
+        "tests/test_wiki_recall.py::test_completed_auto_reply_updates_memory_once_and_skips_unknown"
+      ],
+      "manual_rubric": [
+        "跨会话召回已整理的知识且用户隔离。",
+        "记忆整理异步执行，不挡当前用户回答。"
+      ]
+    },
+    {
+      "id": "connected-metrics-one-answer-no-extra-unknown",
+      "group": "reply_lifecycle",
+      "title": "同一主体的多个指标一次完整回答，不额外生成未知卡片",
+      "reported_failure": "TikTok 营收、税额、日活/月活被拆为三题；一题回答了整句，另外两题各自产生 I do not know。",
+      "context": "当前会话有人工作为依据的部分指标；税额未提供，已有同主体复合提问。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like to know Tiktok's annual revenue, annual tax payments, and its daily and monthly active users."
+        }
+      ],
+      "expected": {
+        "grouping": "同一主体下的依赖属性保持一个完整提问和一次回答；缺项放在同一回复中说明。",
+        "query": "不把 annual tax payments 这样的无主体片段单独发往公共搜索。",
+        "publication": "尚未覆盖所有指标的合法流式前缀不能因不完整而被拦截。",
+        "boundaries": "独立主体、不同记录、内部/公开边界及人工确认规则仍分别处理。"
+      },
+      "pytest_nodes": [
+        "tests/test_request_groups.py::test_dependent_metric_fragments_form_one_complete_request",
+        "tests/test_request_groups.py::test_grouping_preserves_privacy_and_operator_approval_boundaries",
+        "tests/test_request_groups.py::test_independent_entities_and_record_ids_are_not_coalesced",
+        "tests/test_request_groups.py::test_grouping_remaps_external_dependencies",
+        "tests/test_request_groups.py::test_current_publisher_emits_one_grouped_answer_without_unknown_cards",
+        "tests/test_request_groups.py::test_publication_check_is_not_a_streaming_coverage_gate"
+      ],
+      "manual_rubric": [
+        "真实模型不应在一个完整回答外再追加两条未知回复。",
+        "语音、文字入口使用同一分组结果，不能只在 UI 隐藏重复项。"
+      ]
+    },
+    {
+      "id": "future-hint-never-reanswers-existing-question",
+      "group": "hinter",
+      "title": "仅后续生效只影响新输入，不重新回答旧问题",
+      "reported_failure": "点击仅后续生效添加禁令后，系统重新补充回答了已经完成的天气问题。",
+      "context": "当前问题已完成或仍在回答中；通话包含旧问题，点击 future-only 操作。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What's the weather in Shanghai today?"
+        },
+        {
+          "actor": "hinter",
+          "text": "仅后续生效：不准回答任何关于Lemon8的问题。"
+        }
+      ],
+      "expected": {
+        "current": "当前和已完成的问题不重答、不打断、不撤回，也不进行历史回查。",
+        "future": "提示保留，但只用于提示提交之后的新输入；短数字不得自动绑定旧问题。",
+        "async": "参考资料异步读取完成时仍不能重开旧问题；只有纠正并重答允许明确重答。"
+      },
+      "pytest_nodes": [
+        "tests/test_future_guidance.py::test_future_button_never_reanswers_or_infers_an_old_target",
+        "tests/test_future_guidance.py::test_future_hint_is_visible_to_new_input_only",
+        "tests/test_future_guidance.py::test_reference_index_completion_does_not_reopen_old_questions",
+        "tests/test_future_guidance.py::test_correct_now_still_explicitly_reanswers_current_question"
+      ],
+      "manual_rubric": [
+        "真实语音通话中点击后没有新 AI 消息或播报。",
+        "下一次新提问才命中该规则，不影响之前已经排队的输入。"
+      ]
+    },
+    {
+      "id": "public-term-not-forced-transcript-clarification",
+      "group": "transcript",
+      "title": "公开专名和缩写先理解或查询，不因转写建议直接追问",
+      "reported_failure": "I want to know how much tiktok dau 被转写模型标记 metric 缺失，后端强制问 What did you mean by tiktok dau，跳过本来理解该词的主路由。",
+      "context": "公开产品名和常见专业缩写；没有数字、ID、否定等真实转写冲突。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I want to know how much tiktok dau."
+        }
+      ],
+      "expected": {
+        "routing": "转写 missing_slots 只是建议，仍交给主模型结合上下文和 Wiki 理解；缺少公开事实时实际联网。",
+        "clarification": "不要求用户解释常见缩写或可查询的公开专名；真正缺城市、存在冲突的 ID/数字/否定仍需澄清。",
+        "privacy": "内部专名和私有标识不发送到公共搜索；后台保留原转写诊断，已理解的输入不再显示等待确认。"
+      },
+      "pytest_nodes": [
+        "tests/test_term_resolution.py::test_provisional_unknown_term_reaches_semantic_router_and_public_lookup",
+        "tests/test_term_resolution.py::test_real_protected_identifier_conflict_cannot_be_searched",
+        "tests/test_term_resolution.py::test_missing_city_can_still_be_clarified_by_router",
+        "tests/test_term_resolution.py::test_internal_unknown_term_does_not_leak_to_public_search"
+      ],
+      "manual_rubric": [
+        "真实模型识别的是查询 TikTok 日活数值，而不是让用户解释 DAU 的含义。",
+        "更换公开产品、专业缩写或公开冷门术语，也能使用相同策略；不得写死产品名。"
+      ]
+    },
+    {
+      "id": "one-caller-turn-one-settled-answer-card",
+      "group": "reply_lifecycle",
+      "title": "长问题所有分支形成结果后显示唯一汇总气泡",
+      "reported_failure": "同一长问题产生查询附和、失败、补充和重试等多个气泡，旧内容和新内容同时可见。",
+      "context": "一个输入包含营收、税额、DAU、MAU及母公司业绩；后台可以拆分检索和处理。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like TikTok revenue, annual tax payments, DAU, MAU and its parent company's financial performance."
+        }
+      ],
+      "expected": {
+        "card": "同一次输入只有一个稳定 reply 卡片；所有后台分支形成已知或未知结果后才首次显示。",
+        "parts": "卡片按子问题列出已知、部分信息及未知；查询附和、重试和内部失败不单独渲染。",
+        "audit": "原生成尝试保留后台，不删除已发送记录；复制和重播使用当前汇总内容。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_all_subquestion_outcomes_form_one_bubble_with_unknown_part",
+        "tests/test_answer_cards.py::test_initial_bubble_waits_for_every_question_outcome"
+      ],
+      "manual_rubric": [
+        "文字与语音入口、Talker与Hinter看到相同单一答复。",
+        "首次汇总前只在原输入下方显示进度，不出现临时 AI 空气泡。"
+      ]
+    },
+    {
+      "id": "correction-revises-one-card-and-keeps-known-parts",
+      "group": "hinter",
+      "title": "补充和反复纠正都原位更新同一答复的对应项",
+      "reported_failure": "补充一项数据就追加新补充气泡，已知内容被重复播报或被新的未知结果覆盖。",
+      "context": "已有营收和DAU，税额未知；随后提供税额，再纠正营收。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "年度税额为30美元。"
+        },
+        {
+          "actor": "hinter",
+          "text": "纠正：年度营收为15美元。"
+        }
+      ],
+      "expected": {
+        "replace": "税额未知被新数据替换，之后营收按纠正值更新，卡片ID保持不变。",
+        "preserve": "其他已有答案及统计限定保持；未被涉及的已知项不能因为新回答没提到而变未知。",
+        "atomic": "新版未汇总完成时保留完整旧版并标记更新中；完成后一次替换。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_correction_replaces_unknown_in_same_bubble_and_preserves_other_answers",
+        "tests/test_answer_cards.py::test_pending_correction_keeps_complete_previous_version_until_ready",
+        "tests/test_answer_cards.py::test_unknown_cannot_erase_known_without_explicit_retraction"
+      ],
+      "manual_rubric": [
+        "反复补充、纠正至少两次，气泡数量不增长。",
+        "仅后续应用不能修改当前卡片；当前纠正通过原回答更新。"
+      ]
+    },
+    {
+      "id": "answer-part-hint-keeps-numeric-target",
+      "group": "hinter",
+      "title": "从子问题直接补充或纠正，数字绑定到该项",
+      "reported_failure": "长问题含多个指标时，裸数字被当作第一项或新话题，无法替换正确的未知部分。",
+      "context": "Hinter在同一气泡税额项点击补充；另一个人可能同时修改该项。",
+      "steps": [
+        {
+          "actor": "hinter",
+          "text": "在年度税额项补充：30 dollars"
+        }
+      ],
+      "expected": {
+        "binding": "保留原输入和原始数值，并在提示绑定中明确目标子问题，不能把税额填到营收或DAU。",
+        "conflict": "已变更或撤回的项拒绝陈旧提交，保留输入让用户核对；普通用户不能调用Hinter纠正接口。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_part_hint_binds_a_bare_value_to_the_named_subquestion"
+      ],
+      "manual_rubric": [
+        "每项补充/纠正入口仅Hinter可见；服务端也验证角色和归属。",
+        "失败保留输入，成功后更新原气泡，不增加审批或确认预览。"
+      ]
+    },
+    {
+      "id": "answer-card-stale-format-and-withdrawal",
+      "group": "reply_lifecycle",
+      "title": "汇总仅整理已验证文本，旧任务和撤回不能恢复过时内容",
+      "reported_failure": "旧重试覆盖新纠正；汇总时可能生成新数字，或者撤回后重新展示旧版本。",
+      "context": "两个不同版本的格式整理交错返回；某一项随后被撤回。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "旧整理任务晚于新纠正返回。"
+        },
+        {
+          "actor": "hinter",
+          "text": "撤回当前汇总答复。"
+        }
+      ],
+      "expected": {
+        "stale": "旧整理任务必须被版本与最新尝试ID拦住，不能覆盖新值。",
+        "grounding": "已知项正文只能引用已验证公开回答；格式整理不得添加新数值或补造来源。",
+        "withdraw": "撤回后无旧值复活，文字与重播均不可获得旧内容。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_late_formatter_cannot_overwrite_a_newer_correction",
+        "tests/test_answer_cards.py::test_formatter_cannot_invent_value_not_in_validated_answer",
+        "tests/test_answer_cards.py::test_withdrawn_latest_part_never_resurrects_prior_value"
+      ],
+      "manual_rubric": [
+        "实际通话停止/纠正/撤回时音频与最新显示一致。",
+        "后台仍能看到原尝试用于排查，公开时间线只显示汇总版本。"
+      ]
+    },
+    {
+      "id": "live-complete-text-visible-during-audio",
+      "group": "reply_lifecycle",
+      "title": "通话文字完成即显示唯一气泡，不能等待播报结束",
+      "reported_failure": "Talker 已听到回答，但消息区没有 AI 气泡；打断播报后完整文字仍被隐藏。",
+      "context": "正常回答文字已通过发布检查；语音仍在分段播报，分项整理可能仍在进行。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I want to know what TikTok's annual revenue is."
+        },
+        {
+          "actor": "system",
+          "text": "文字生成结束后继续播放语音；在播报结束前打断。"
+        }
+      ],
+      "expected": {
+        "visibility": "完整有效文字生成后即显示唯一汇总气泡，不等待音频结束或格式整理。",
+        "interruption": "只打断音频不能删除完整文字；兼容旧记录 text_done 与 model_done_ms。",
+        "completion": "仅 text_done 的被取消残片不能冒充完整生成；音频仍播放不代表正文仍在更新。",
+        "aggregation": "多分支仍等待各项文字结果；分项整理完成后原位更新，不追加气泡。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_complete_text_is_visible_before_audio_or_formatter_finishes",
+        "tests/test_answer_cards.py::test_audio_interruption_keeps_fully_generated_text_visible",
+        "tests/test_answer_cards.py::test_text_done_on_cancel_does_not_claim_complete_generation",
+        "tests/test_answer_cards.py::test_audio_playing_does_not_leave_structured_card_updating",
+        "tests/test_answer_cards.py::test_formatter_accepts_complete_text_independent_of_audio"
+      ],
+      "manual_rubric": [
+        "真实通话时文字不应等待整段语音播放结束才出现。",
+        "纠正、打断和整理都保持同一个答复气泡 ID。"
+      ]
+    },
+    {
+      "id": "partial-wiki-still-searches-public-gaps",
+      "group": "web_evidence",
+      "title": "Wiki 只覆盖部分公开指标时继续搜索缺失项",
+      "reported_failure": "公共数据问题被标记 partial/provided 后清空搜索词，只回答 Wiki 并把其余指标当未知。",
+      "context": "模型结合问题、上下文和 Wiki 判断为 public；Wiki 只有部分指标或广告收入估计，不能覆盖所有请求。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like to know TikTok's annual revenue, annual tax payments, DAU, MAU, and the parent company's financial performance."
+        }
+      ],
+      "expected": {
+        "route": "partial + provided + public 先 lookup；不按产品名称写死规则。",
+        "tools": "使用原公开问题的词检索，不能把 Wiki/Hint 私有数值写入搜索词。",
+        "answer": "合并 Wiki 与联网证据到同一个气泡，区分人工提供与公开核实；搜索失败保留已提供部分，仅缺失项未知。",
+        "correction": "Hinter 补充只覆盖部分指标时不能关闭对其他公开缺项的搜索。",
+        "boundaries": "有效禁令、人工确认、内部数据、禁止搜索仍受原策略约束；完整匹配的授权事实可直接回答。"
+      },
+      "pytest_nodes": [
+        "tests/test_wiki_recall.py::test_partial_human_values_preserve_facts_and_search_missing_public_data",
+        "tests/test_wiki_recall.py::test_partial_wiki_recall_reaches_generation_context",
+        "tests/test_wiki_recall.py::test_public_partial_lookup_obeys_internal_prohibition_and_search_boundaries",
+        "tests/test_wiki_recall.py::test_failed_public_completion_preserves_supplied_facts",
+        "tests/test_wiki_recall.py::test_bound_partial_correction_does_not_disable_missing_public_lookup"
+      ],
+      "manual_rubric": [
+        "真实通话公开缺项触发 web_search，结果与 Wiki 合并到原气泡。",
+        "不能把广告收入改写成总营收，不能把人次改写成去重人数。"
+      ]
+    },
+    {
+      "id": "single-answer-full-text-and-speech-match",
+      "group": "reply_lifecycle",
+      "title": "单问题保留原始完整正文，不再经二次模型摘要",
+      "reported_failure": "上海天气原回答有三句话，页面分项整理后只剩第一句，语音仍读三句。",
+      "context": "单个明确请求；可能带一个 subrequest 标签或旧版截短 answer_parts。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "What's the weather like in Shanghai today?"
+        }
+      ],
+      "expected": {
+        "format": "单问题不调用 structure_reply，完整原始公开回答作为唯一气泡正文。",
+        "speech": "正文与朗读使用相同原文，包含期间、来源和限定条件，不另做摘要。",
+        "stream": "每段通过检查后即可在原气泡显示；旧版截短记录也恢复完整正文。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_single_weather_keeps_full_original_text_even_with_legacy_short_parts",
+        "tests/test_answer_cards.py::test_single_streamed_sentence_is_visible_before_full_generation",
+        "tests/test_answer_cards.py::test_single_lookup_skips_secondary_model_and_keeps_full_text"
+      ],
+      "manual_rubric": [
+        "实际天气回答与实时播报和手动重播全文一致；不得只保留第一句。"
+      ]
+    },
+    {
+      "id": "grouped-correction-updates-card-before-speaking-delta",
+      "group": "hinter",
+      "title": "多问题先更新原气泡，再自然播报已更新的项目",
+      "reported_failure": "Hinter 补税额、DAU、MAU 和母公司数据后，新回答已经播报，但页面仍全是未知；一段引用错误使所有有效更新丢失。",
+      "context": "原气泡包含一项已知与多项未知，补充信息只更新其中一部分。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like to know annual revenue, annual tax payments, DAU, MAU, and the parent company's financial performance."
+        },
+        {
+          "actor": "hinter",
+          "text": "补充缺失指标或纠正其中一项，保留其他项。"
+        }
+      ],
+      "expected": {
+        "display": "沿用原气泡 ID，先把对应未知项或旧值替换成新值，再排入对应语音；一项无效引用不能阻止其他有效项更新。",
+        "speech": "后续播报以自然的已更新提示开头，只读变化项，不重复整份旧答案；没有变化时不重复发音。",
+        "grounding": "句子索引回退只能选择已通过检查的原始回答；不得生成新数字；保留未变化的已知项。",
+        "single": "单问题不套用多项更新整理和播报路径。"
+      },
+      "pytest_nodes": [
+        "tests/test_answer_cards.py::test_one_bad_quote_does_not_discard_other_valid_updated_parts",
+        "tests/test_answer_cards.py::test_sentence_selection_recovers_quote_copying_error_without_new_facts",
+        "tests/test_answer_cards.py::test_group_update_speaks_only_changed_items_with_a_natural_intro",
+        "tests/test_answer_cards.py::test_group_card_is_updated_before_any_correction_audio_is_queued"
+      ],
+      "manual_rubric": [
+        "真实补充时页面已更新的项目应与接下来播报的项目一致。",
+        "唯一气泡和完整重播保留所有当前项目；仅后续应用不触发追溯播报。"
+      ]
+    },
+    {
+      "id": "single-primary-model-for-all-llm-stages",
+      "group": "routing",
+      "title": "所有 LLM 阶段统一使用当前 DeepSeek 主模型",
+      "reported_failure": "输入整理和路由自动挑选 Seed flash，主回答使用另一模型；主模型没有看到被硬编码打断的问题。",
+      "context": "配置多个模型，并保留旧的 CALL_REASONER_MODEL/CALL_TRANSCRIPT_MODEL/CALL_RESPONSE_MODEL 小模型覆盖。",
+      "steps": [
+        {
+          "actor": "system",
+          "text": "启动服务并读取实际模型绑定，不发起真实模型请求。"
+        }
+      ],
+      "expected": {
+        "models": "输入整理、路由、检查、Wiki、分项整理、回答共用 PRIMARY_MODEL 客户端。",
+        "fallback": "应用模型池只启用主模型，不自动转到 Seed 或其他模型；旧分阶段覆盖不再生效。"
+      },
+      "pytest_nodes": [
+        "tests/test_primary_model.py::test_refinement_routing_and_answer_ignore_legacy_small_model_overrides",
+        "tests/test_primary_model.py::test_application_pins_all_llm_consumers_to_one_primary_client"
+      ],
+      "manual_rubric": [
+        "运行时各阶段模型标签一致；服务健康不代表模型在线推理已验证。"
+      ]
+    },
+    {
+      "id": "normal-indirect-question-not-a-clarification-term",
+      "group": "transcript",
+      "title": "正常间接问句与专名同音识别差异交给主模型理解",
+      "reported_failure": "把 I'd like to know what ... active users are 拆成两段，并追问 I'd like to know 是什么意思。",
+      "context": "在线识别把专名数字后缀听成同音词，完整二遍识别给出可理解的产品名；refiner 标记 protected_conflict。",
+      "steps": [
+        {
+          "actor": "talker",
+          "text": "I'd like to know what Lemon 8s daily and monthly active users are."
+        }
+      ],
+      "expected": {
+        "interpretation": "把输入当作用户对 AI 的完整请求，判断实际意图；不因为句尾 are 或礼貌前缀而澄清。",
+        "routing": "所有有效输入都经过主模型；语法/专名拼写可由语义消歧，公开术语不懂先搜索。",
+        "clarification": "只针对真正不清楚的名词、名称、保护值或必要细节追问；不引用第一个原始转写片段机械造问。",
+        "protected": "真实 ID/金额/否定冲突不选边猜测，仍由主模型形成具体澄清；有效禁令继续优先。"
+      },
+      "pytest_nodes": [
+        "tests/test_term_resolution.py::test_indirect_question_and_entity_homophone_reach_primary_semantics",
+        "tests/test_term_resolution.py::test_request_frame_is_never_manufactured_into_a_term_clarification",
+        "tests/test_term_resolution.py::test_real_protected_identifier_conflict_cannot_be_searched",
+        "tests/test_natural_voice.py::test_handoff_leaves_semantic_slots_to_primary_and_respects_explicit_thinking"
+      ],
+      "manual_rubric": [
+        "正常英语表达可直接进入回答/搜索/禁令策略，不能出现对请求前缀的追问。"
+      ]
+    }
+  ],
+  "live_acceptance_sequence": {
+    "setup": "隔离客户与会话，启用真实已配置模型、搜索与语音；customer 范围设置“禁止回答 Lemon8 的任何问题”，effective_from=next_turn；保留上一轮拒答及查询历史。四条输入在同一次通话依次完成，不批准正常问题。 保留历史误拒答后继续回放酒店、效率和含糊补充三题，核对新主题不会继承前面的拒答。",
+    "steps": [
+      {
+        "case_id": "prohibition-before-asr-clarification",
+        "input": "I'd like to know what LEMON 8S daily and monthly active users are",
+        "expected": "I don't know.",
+        "tools": "不得搜索"
+      },
+      {
+        "case_id": "public-tiktok-metrics",
+        "input": "I'd like to know TikTok's annual revenue, annual tax payments, and its daily and monthly active users. I'd like to know",
+        "expected": "实际搜索，回答可核实部分，明确缺失与口径；不因 Lemon8 规则拒答。",
+        "tools": "web_search，读取支持正文"
+      },
+      {
+        "case_id": "public-shanghai-weather",
+        "input": "What's with the weather in Shanghai in today?",
+        "expected": "实际获取当前上海天气，注明观测时间和来源，不固定温度。",
+        "tools": "web_search，读取当前天气来源"
+      },
+      {
+        "case_id": "ordinary-dau-definition",
+        "input": "What does DAU mean?",
+        "expected": "直接解释 daily active users，不需要 Hinter。",
+        "tools": "无需搜索"
+      },
+      {
+        "case_id": "hotel-after-topic-ban",
+        "input": "How do I book that hotel on a tour?",
+        "expected": "正常回答预订流程或询问城市和日期；不得命中 Lemon8 禁令。；模型 action=answer 时，即使误填 web_query 也不应强制搜索。",
+        "tools": "依意图处理，不因无关禁令拒答"
+      },
+      {
+        "case_id": "efficiency-after-topic-ban",
+        "input": "I'd like to know how much ego has improved the teams efficiency and how much it has saved in p d man hours",
+        "expected": "依据当前问题与 Wiki 判断；缺内部事实时 Hinter，实体/范围不明时澄清。；不能把 ego 擅自视为 Lemon8 的别名，不能因是数值问题固定拒答。",
+        "tools": "依意图处理，不因无关禁令拒答"
+      },
+      {
+        "case_id": "fragment-after-topic-ban",
+        "input": "And that much.",
+        "expected": "结合真实前文识别补充；无法理解时问一个具体澄清问题。；过去连续拒答不构成当前适用性证据；不得未经判断继承规则 ID。",
+        "tools": "依意图处理，不因无关禁令拒答"
+      }
+    ],
+    "checks": [
+      "每条都有可见非空最终答案；question answered，最终 answer completed，无 reply/response error。",
+      "拒答只一条固定英文；正常问题不误命中禁令；ACK、进度不是最终有效答案。",
+      "声音路径必须以实际 PCM 回放输入，不得以文本直送宣称 ASR 通过；无录音时可另录合成语音并标注来源。",
+      "每条收集实际路由、规则 ID、工具调用与来源、文本、分段音频帧数、归档 PCM 是否非零、错误事件。",
+      "记录首个实质答案及全文音频完成时间；长播报不能导致伪生成超时。",
+      "Hinter 补充和取消查询等其他场景按各 case.steps 独立实跑，不能由四条基础通话覆盖替代。"
+    ]
+  }
+}

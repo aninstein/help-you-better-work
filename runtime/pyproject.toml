@@ -1,0 +1,15 @@
+[project]
+name = "duet-personal-employee-runtime"
+version = "1.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "deerflow-harness==2.1.0", "deerflow-extension-api==0.2.9",
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+  "pymysql[rsa]==1.1.2", "argon2-cffi==25.1.0", "phonenumbers==9.0.17",
+  "aiomysql>=0.2,<1", "python-multipart>=0.0.20", "python-dotenv>=1,<2",
+  "httpx>=0.28,<1", "websockets>=15,<18",
+  "edge-tts>=7.2,<8", "faster-whisper>=1.1,<2", "langchain-ollama>=1.0,<2"
+]
+[tool.uv.sources]
+deerflow-harness = { path = "../vendor/deerflow/deerflow-harness-e9074b7.tar.gz" }
+deerflow-extension-api = { path = "../vendor/deerflow/deerflow-extension-api-e9074b7.tar.gz" }

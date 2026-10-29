@@ -1,0 +1,6 @@
+# Versioned JSON/HTML/Markdown reports are repository evidence. Per-run server
+# logs can contain local signed URLs or session query parameters and stay local.
+!reports/
+!reports/**
+reports/**/server.log
+.runtime/

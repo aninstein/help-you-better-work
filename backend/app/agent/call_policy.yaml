@@ -1,0 +1,22 @@
+version: response-v2
+actions:
+  routine: auto
+  mild_language: auto
+  open_domain: auto
+  data_lookup: auto
+  ambiguous: auto
+  harmful: deny
+signals:
+  open_domain:
+    - 'meaning of life|人生.*意义'
+  data_lookup:
+    - '(?:look\s*up|fetch|query|retrieve|查询|查一下).*(?:\bid\b|\bdau\b|account|user|用户|账户|日活)'
+    - '(?:yesterday|today|昨天|今天).*(?:\bdau\b|日活)'
+notes:
+  - 分类和上下文结合词汇信号；词表命中不能独自判定犯罪。
+  - 解释指标、预防诈骗和 kill a process 不属于危险协助或真实数据查询。
+  - DAU、MAU、营收等可能公开的指标先搜索；未知数值或 data_lookup 分类不等于内部数据。
+  - 仅明确内部数据缺少依据或命中 Hinter 的人工确认规则时，转人工补充。
+  - 模型结合当前问题、会话和 Wiki 判断公开或内部范围，不按产品名称写死。
+  - 普通常识可使用仅来自原话的公开网页查询，私有提示和 Wiki 不进入搜索词。
+  - 人工待处理问题保持挂起，后续新话题不取消已批准的补答。

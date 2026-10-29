@@ -1,0 +1,15 @@
+{
+  "workspace": ".",
+  "skill_dirs": [".agents/skills", ".codex/skills"],
+  "web_search_enabled": true,
+  "web_search_provider": "bing",
+  "searxng_url": "",
+  "lark_doc_enabled": true,
+  "lark_cli": "lark-cli",
+  "bash_enabled": true,
+  "timeout_seconds": 30,
+  "max_output_chars": 18000,
+  "max_rounds": 8,
+  "max_calls": 24,
+  "mcp_servers": {}
+}

@@ -1,0 +1,13 @@
+.git
+.runtime
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+backend/data
+.env
+agent-tools.json
+**/*.tsbuildinfo
